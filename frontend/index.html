@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IntervAI : Record An Interview, Get The Notes</title>
+  <link rel="icon" type="image/png" href="Logo.jpeg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="blob blob-a" aria-hidden="true"></div>
+  <div class="blob blob-b" aria-hidden="true"></div>
+
+  <header class="top">
+    <button class="brand" id="brand-home" type="button"><img src="Logo.jpeg" alt="" class="brand-logo">IntervAI</button>
+    <nav aria-label="Main">
+      <button id="tab-new" class="tab" aria-current="page">New interview</button>
+      <button id="tab-past" class="tab">Past interviews</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- NEW INTERVIEW FLOW -->
+    <section id="view-new" aria-label="New interview">
+
+      <!-- STEP 1: HOME -->
+      <div class="screen" id="screen-home">
+        <p class="eyebrow">Every conversation leaves a few lessons behind</p>
+        <h2 class="hero-title"><strong>Have the interview.<br>We'll do the homework.</strong></h2>
+        <p class="hero-sub">Record the conversation, or upload one you already have. IntervAI listens to the whole thing and hands back what went well, what didn't, and what to work on.</p>
+        <button id="btn-goto-mode" class="btn primary big">Start a new interview</button>
+      </div>
+
+      <!-- STEP 2: MODE SELECT -->
+      <div class="screen" id="screen-mode" hidden>
+        <button class="back" data-back="screen-home" type="button">&larr; Back</button>
+        <h2>How do you want to bring in the audio?</h2>
+        <div class="mode-grid">
+          <button class="mode-card" id="mode-live" type="button">
+            <span class="mode-title">Record it now</span>
+            <span class="mode-desc">Start the interview live in this tab. You can pause and resume as you go.</span>
+          </button>
+          <button class="mode-card" id="mode-upload" type="button">
+            <span class="mode-title">Upload a recording</span>
+            <span class="mode-desc">Already have the audio saved? Pick the file and skip straight to analysis.</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 3A: RECORD (live mode) -->
+      <div class="screen" id="screen-record" hidden>
+        <button class="back" data-back="screen-mode" type="button">&larr; Back</button>
+        <label class="check mic-pick">
+          Microphone
+          <select id="mic-select" aria-label="Microphone"></select>
+        </label>
+
+        <label class="check consent">
+          <input type="checkbox" id="capture-tab">
+          This interview is on a video call. Also record the other person's voice.
+        </label>
+        <p class="muted" style="margin:-0.75rem 0 1.5rem 1.75rem;font-size:0.9rem;">
+          Works in Chrome or Edge on a computer. After you press Start, pick your call tab and tick "Share tab audio".
+        </p>
+
+        <div class="recorder">
+          <div class="timer" id="timer">00:00:00</div>
+          <div class="meter" id="meter" aria-hidden="true"></div>
+          <p class="status" id="status" role="status">Ready to record.</p>
+
+          <div class="controls">
+            <button id="btn-start" class="btn record">Start recording</button>
+            <button id="btn-pause" class="btn" hidden>Pause</button>
+            <button id="btn-stop" class="btn" hidden>Stop</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 3B: UPLOAD (file mode) -->
+      <div class="screen" id="screen-upload" hidden>
+        <button class="back" data-back="screen-mode" type="button">&larr; Back</button>
+        <div class="dropzone">
+          <p class="mode-title">Choose an audio file</p>
+          <p class="hero-sub">mp3, wav, m4a, ogg or webm.</p>
+          <label class="file-label">Choose file <input type="file" id="file" accept="audio/*,.webm,.m4a,.mp3,.wav,.ogg"></label>
+        </div>
+      </div>
+
+      <!-- STEP 4: REVIEW BEFORE SENDING -->
+      <div class="screen" id="screen-review" hidden>
+        <h2>Ready to send this in?</h2>
+        <div class="review">
+          <audio id="player" controls></audio>
+          <label class="check">
+            <input type="checkbox" id="transcript-opt">
+            Also write out the full transcript (takes longer)
+          </label>
+          <div class="controls">
+            <button id="btn-analyze" class="btn primary">Analyze this interview</button>
+            <button id="btn-download" class="btn" hidden>Download recording</button>
+            <button id="btn-discard" class="btn">Start over</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 5: LOADING -->
+      <div class="screen" id="screen-loading" hidden>
+        <div class="loading">
+          <div class="loading-blob" aria-hidden="true"></div>
+          <p>Reading through the interview now.</p>
+          <p class="hero-sub">A one-hour recording usually takes a few minutes.</p>
+          <p class="elapsed" id="elapsed">0:00</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAST INTERVIEWS -->
+    <section id="view-past" aria-label="Past interviews" hidden>
+      <p class="eyebrow">Everything you've recorded so far</p>
+      <h2>Past interviews</h2>
+      <ul id="past-list" class="past-list"></ul>
+      <p id="past-empty" class="muted" hidden>Nothing here yet. Run your first interview and it'll show up in this list.</p>
+    </section>
+
+    <p id="error" class="error" role="alert" hidden></p>
+
+    <!-- STEP 6 / RESULTS (reached from either flow) -->
+    <article id="results" class="results" hidden>
+      <button class="back" id="btn-results-new" type="button">&larr; Start another interview</button>
+      <header class="results-head">
+        <div>
+          <h2 id="r-title"></h2>
+          <p class="muted" id="r-meta"></p>
+        </div>
+        <div class="score-card" id="score-card" hidden>
+          <svg viewBox="0 0 80 80" class="score-ring" aria-hidden="true">
+            <circle cx="40" cy="40" r="34" class="score-track"></circle>
+            <circle cx="40" cy="40" r="34" class="score-fill" id="score-fill"></circle>
+          </svg>
+          <div class="score-num"><span id="score-value">–</span><small>/10</small></div>
+        </div>
+      </header>
+
+      <p id="r-summary" class="summary"></p>
+
+      <div class="columns">
+        <section class="col pos">
+          <h3>What went well</h3>
+          <ul id="r-pos"></ul>
+        </section>
+        <section class="col neg">
+          <h3>What held it back</h3>
+          <ul id="r-neg"></ul>
+        </section>
+        <section class="col sug">
+          <h3>Worth trying next time</h3>
+          <ul id="r-sug"></ul>
+        </section>
+      </div>
+
+      <details id="r-transcript-box" hidden>
+        <summary>Read the full transcript</summary>
+        <pre id="r-transcript"></pre>
+      </details>
+    </article>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
