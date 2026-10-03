@@ -16,9 +16,16 @@
 
   <header class="top">
     <button class="brand" id="brand-home" type="button"><img src="logo.svg" alt="IntervAI Logo" class="brand-logo">IntervAI</button>
-    <nav aria-label="Main">
+    <nav aria-label="Main" class="top-nav">
       <button id="tab-new" class="tab" aria-current="page">New interview</button>
       <button id="tab-past" class="tab">Past interviews</button>
+      <div id="auth-nav-guest" class="auth-nav-box">
+        <button id="btn-open-login" class="tab auth-btn-login" type="button">Sign In</button>
+      </div>
+      <div id="auth-nav-user" class="auth-nav-box" hidden>
+        <span id="user-greeting" class="user-pill">👤 User</span>
+        <button id="btn-logout" class="tab auth-btn-logout" type="button">Log out</button>
+      </div>
     </nav>
   </header>
 
@@ -167,6 +174,50 @@
       </details>
     </article>
   </main>
+
+  <!-- AUTHENTICATION MODAL (LOGIN & SIGNUP) -->
+  <div id="auth-modal" class="auth-overlay" hidden>
+    <div class="auth-card" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+      <button id="btn-close-auth" class="auth-close" type="button" aria-label="Close modal">&times;</button>
+      
+      <div class="auth-head">
+        <img src="logo.svg" alt="" class="auth-brand-logo">
+        <h2 id="auth-title">Sign In to IntervAI</h2>
+        <p id="auth-desc" class="muted">Access your personalized interview evaluations and records.</p>
+      </div>
+
+      <div class="auth-tabs" role="tablist">
+        <button id="tab-auth-login" class="auth-tab-btn active" type="button" role="tab" aria-selected="true">Sign In</button>
+        <button id="tab-auth-signup" class="auth-tab-btn" type="button" role="tab" aria-selected="false">Create Account</button>
+      </div>
+
+      <p id="auth-error" class="auth-error" role="alert" hidden></p>
+      <p id="auth-success" class="auth-success" role="status" hidden></p>
+
+      <form id="auth-form" class="auth-form">
+        <div id="auth-field-name" class="auth-field" hidden>
+          <label for="auth-input-name">Full Name</label>
+          <input type="text" id="auth-input-name" placeholder="e.g. Hoshil Patel" autocomplete="name">
+        </div>
+
+        <div class="auth-field">
+          <label for="auth-input-email">Email Address</label>
+          <input type="email" id="auth-input-email" placeholder="name@example.com" required autocomplete="email">
+        </div>
+
+        <div class="auth-field">
+          <label for="auth-input-password">Password</label>
+          <input type="password" id="auth-input-password" placeholder="At least 6 characters" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" id="btn-auth-submit" class="btn primary big auth-submit">Sign In</button>
+      </form>
+
+      <div class="auth-footer">
+        <p class="muted" id="auth-footer-prompt">Don't have an account? <button type="button" id="btn-switch-signup" class="auth-switch-link">Sign up</button></p>
+      </div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

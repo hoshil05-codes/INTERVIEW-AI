@@ -6,7 +6,14 @@ const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
 const mysql = require("mysql2/promise");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const { GoogleGenAI } = require("@google/genai");
+
+// =========================
+// CONFIGURATION & SECRETS
+// =========================
+const JWT_SECRET = process.env.JWT_SECRET || "intervai-super-secret-jwt-key-2026";
 
 // =========================
 // DIRECTORIES
@@ -15,6 +22,7 @@ const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTI
 const uploadsPath = isServerless ? path.join("/tmp", "uploads") : path.join(__dirname, "uploads");
 const dataPath = isServerless ? path.join("/tmp", "data") : path.join(__dirname, "data");
 const localDbPath = path.join(dataPath, "interviews.json");
+const usersDbPath = path.join(dataPath, "users.json");
 
 if (!fs.existsSync(uploadsPath)) {
   fs.mkdirSync(uploadsPath, { recursive: true });
@@ -109,6 +117,24 @@ function writeLocalInterviews(items) {
   }
 }
 
+function readLocalUsers() {
+  try {
+    if (!fs.existsSync(usersDbPath)) {
+      return [];
+    }
+    const raw = fs.readFileSync(usersDbPath, "utf-8");
+    return JSON.parse(raw);
+  } catch (err) {
+    return [];
+  }
+}
+
+function writeLocalUsers(items) {
+  try {
+    fs.writeFileSync(usersDbPath, JSON.stringify(items, null, 2), "utf-8");
+  } catch (err) {}
+}
+
 function parseArrayField(val) {
   if (Array.isArray(val)) return val;
   if (!val) return [];
@@ -146,7 +172,9 @@ function normalizeInterview(item) {
     suggestions,
     interviewer_suggestions: suggestions,
     transcript: item.transcript || "",
-    score: item.score != null ? Number(item.score) : null
+    score: item.score != null ? Number(item.score) : null,
+    user_id: item.user_id || null,
+    user_email: item.user_email || null
   };
 }
 
@@ -186,7 +214,18 @@ async function initDatabase() {
       const conn = await dbPool.getConnection();
       await conn.query("SELECT 1");
 
-      // Auto-create table if not exists
+      // Auto-create users table if not exists
+      await conn.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          email VARCHAR(255) NOT NULL UNIQUE,
+          password VARCHAR(255) NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      // Auto-create interviews table if not exists
       await conn.query(`
         CREATE TABLE IF NOT EXISTS interviews (
           id INT AUTO_INCREMENT PRIMARY KEY,
@@ -200,16 +239,22 @@ async function initDatabase() {
           interviewer_suggestions TEXT,
           transcript TEXT,
           score INT DEFAULT NULL,
+          user_id INT DEFAULT NULL,
+          user_email VARCHAR(255) DEFAULT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
 
-      // Ensure score column exists
+      // Ensure columns exist on legacy tables
       try {
         await conn.query("ALTER TABLE interviews ADD COLUMN score INT DEFAULT NULL");
       } catch (_) {}
-
-      // Ensure created_at column exists
+      try {
+        await conn.query("ALTER TABLE interviews ADD COLUMN user_id INT DEFAULT NULL");
+      } catch (_) {}
+      try {
+        await conn.query("ALTER TABLE interviews ADD COLUMN user_email VARCHAR(255) DEFAULT NULL");
+      } catch (_) {}
       try {
         await conn.query("ALTER TABLE interviews ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
       } catch (_) {}
@@ -229,18 +274,119 @@ async function initDatabase() {
   }
 }
 
-async function getAllInterviews() {
+// =========================
+// USER AUTHENTICATION HELPERS
+// =========================
+async function findUserByEmail(email) {
+  if (!email) return null;
+  const cleanEmail = email.toLowerCase().trim();
+
   if (isDbConnected && dbPool) {
     try {
       const [rows] = await dbPool.query(
-        "SELECT * FROM interviews ORDER BY id DESC"
+        "SELECT * FROM users WHERE email = ? LIMIT 1",
+        [cleanEmail]
       );
+      if (rows.length > 0) return rows[0];
+    } catch (err) {
+      console.error("MySQL findUserByEmail error:", err.message);
+    }
+  }
+
+  const local = readLocalUsers();
+  return local.find((u) => u.email.toLowerCase() === cleanEmail) || null;
+}
+
+async function findUserById(id) {
+  if (!id) return null;
+
+  if (isDbConnected && dbPool) {
+    try {
+      const [rows] = await dbPool.query(
+        "SELECT id, name, email, created_at FROM users WHERE id = ? LIMIT 1",
+        [id]
+      );
+      if (rows.length > 0) return rows[0];
+    } catch (err) {
+      console.error("MySQL findUserById error:", err.message);
+    }
+  }
+
+  const local = readLocalUsers();
+  const u = local.find((item) => String(item.id) === String(id));
+  if (u) {
+    return { id: u.id, name: u.name, email: u.email, created_at: u.created_at };
+  }
+  return null;
+}
+
+async function createNewUser({ name, email, password }) {
+  const cleanEmail = email.toLowerCase().trim();
+  const cleanName = name.trim();
+
+  if (isDbConnected && dbPool) {
+    try {
+      const [res] = await dbPool.execute(
+        "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
+        [cleanName, cleanEmail, password]
+      );
+      return {
+        id: res.insertId,
+        name: cleanName,
+        email: cleanEmail
+      };
+    } catch (err) {
+      console.error("MySQL createUser error, fallback to local:", err.message);
+    }
+  }
+
+  const local = readLocalUsers();
+  const newUser = {
+    id: Date.now(),
+    name: cleanName,
+    email: cleanEmail,
+    password,
+    created_at: new Date().toISOString()
+  };
+  local.push(newUser);
+  writeLocalUsers(local);
+  return { id: newUser.id, name: newUser.name, email: newUser.email };
+}
+
+// =========================
+// INTERVIEWS STORAGE HELPERS
+// =========================
+async function getAllInterviews(userId = null, userEmail = null) {
+  if (isDbConnected && dbPool) {
+    try {
+      let query = "SELECT * FROM interviews";
+      let params = [];
+
+      if (userId || userEmail) {
+        query += " WHERE user_id = ? OR user_email = ? OR (user_id IS NULL AND user_email IS NULL) ORDER BY id DESC";
+        params = [userId || -1, userEmail || ""];
+      } else {
+        query += " ORDER BY id DESC";
+      }
+
+      const [rows] = await dbPool.query(query, params);
       return rows.map(normalizeInterview);
     } catch (err) {
       console.error("MySQL query error in getAllInterviews:", err.message);
     }
   }
+
   const local = readLocalInterviews();
+  if (userId || userEmail) {
+    return local
+      .filter(
+        (item) =>
+          String(item.user_id) === String(userId) ||
+          item.user_email === userEmail ||
+          (!item.user_id && !item.user_email)
+      )
+      .map(normalizeInterview);
+  }
   return local.map(normalizeInterview);
 }
 
@@ -281,8 +427,10 @@ async function saveInterviewRecord(record) {
           negative_points,
           interviewer_suggestions,
           transcript,
-          score
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          score,
+          user_id,
+          user_email
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           normalized.interview_id,
           normalized.date,
@@ -293,7 +441,9 @@ async function saveInterviewRecord(record) {
           JSON.stringify(normalized.negatives),
           JSON.stringify(normalized.suggestions),
           normalized.transcript,
-          normalized.score
+          normalized.score,
+          normalized.user_id,
+          normalized.user_email
         ]
       );
       normalized.id = res.insertId || normalized.interview_id;
@@ -347,6 +497,26 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
+// Optional JWT User Extractor Middleware
+app.use((req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
+
+  if (!token) {
+    req.user = null;
+    return next();
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (!err && decoded) {
+      req.user = decoded;
+    } else {
+      req.user = null;
+    }
+    next();
+  });
+});
+
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, "frontend")));
 
@@ -389,10 +559,107 @@ const upload = multer({
 });
 
 // =========================
-// API ROUTES
+// AUTHENTICATION API ROUTES
 // =========================
 
-// 1. Health check
+// 1. Register new user
+app.post("/api/auth/register", async (req, res) => {
+  try {
+    const { name, email, password } = req.body || {};
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: "Please enter your name." });
+    }
+    if (!email || !email.includes("@")) {
+      return res.status(400).json({ success: false, message: "Please enter a valid email address." });
+    }
+    if (!password || password.length < 6) {
+      return res.status(400).json({ success: false, message: "Password must be at least 6 characters." });
+    }
+
+    const existing = await findUserByEmail(email);
+    if (existing) {
+      return res.status(400).json({ success: false, message: "This email is already registered. Please sign in." });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await createNewUser({ name, email, password: hashedPassword });
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, name: user.name },
+      JWT_SECRET,
+      { expiresIn: "30d" }
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Account created successfully!",
+      token,
+      user: { id: user.id, name: user.name, email: user.email }
+    });
+  } catch (error) {
+    console.error("Register error:", error);
+    res.status(500).json({ success: false, message: "Registration failed. Please try again." });
+  }
+});
+
+// 2. Login existing user
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Please enter email and password." });
+    }
+
+    const user = await findUserByEmail(email);
+    if (!user) {
+      return res.status(401).json({ success: false, message: "Invalid email or password." });
+    }
+
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      return res.status(401).json({ success: false, message: "Invalid email or password." });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, name: user.name },
+      JWT_SECRET,
+      { expiresIn: "30d" }
+    );
+
+    res.json({
+      success: true,
+      message: "Welcome back!",
+      token,
+      user: { id: user.id, name: user.name, email: user.email }
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ success: false, message: "Login failed. Please try again." });
+  }
+});
+
+// 3. Current user profile session check
+app.get("/api/auth/me", async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: "Not authenticated" });
+  }
+  const user = await findUserById(req.user.id);
+  if (!user) {
+    return res.status(404).json({ success: false, message: "User not found" });
+  }
+  res.json({
+    success: true,
+    user: { id: user.id, name: user.name, email: user.email }
+  });
+});
+
+// =========================
+// INTERVIEW API ROUTES
+// =========================
+
+// Health check
 app.get("/api/health", (req, res) => {
   res.json({
     success: true,
@@ -402,7 +669,7 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// 2. Audio Upload API
+// Audio Upload API
 app.post("/api/interview/upload", upload.single("audio"), (req, res) => {
   try {
     if (!req.file) {
@@ -434,7 +701,7 @@ app.post("/api/interview/upload", upload.single("audio"), (req, res) => {
   }
 });
 
-// 3. AI Interview Analysis API
+// AI Interview Analysis API
 app.post("/api/interview/analyze", async (req, res) => {
   let audioPath = null;
   let targetFilename = req.body && req.body.filename;
@@ -605,7 +872,9 @@ Scoring criteria:
       negative_points: parsedResult.negatives || [],
       interviewer_suggestions: parsedResult.suggestions || [],
       transcript: parsedResult.transcript || "",
-      score: score
+      score: score,
+      user_id: req.user ? req.user.id : null,
+      user_email: req.user ? req.user.email : null
     });
 
     console.log("✅ Interview analysis saved:", savedRecord.interview_id);
@@ -640,10 +909,12 @@ Scoring criteria:
   }
 });
 
-// 4. Get all past interviews
+// Get past interviews (filtered by user if authenticated)
 app.get("/api/interviews", async (req, res) => {
   try {
-    const list = await getAllInterviews();
+    const userId = req.user ? req.user.id : null;
+    const userEmail = req.user ? req.user.email : null;
+    const list = await getAllInterviews(userId, userEmail);
     res.json(list);
   } catch (error) {
     console.error("Error fetching interviews:", error);
@@ -654,7 +925,7 @@ app.get("/api/interviews", async (req, res) => {
   }
 });
 
-// 5. Get single interview by ID
+// Get single interview by ID
 app.get("/api/interviews/:id", async (req, res) => {
   try {
     const item = await getInterviewById(req.params.id);
@@ -674,7 +945,7 @@ app.get("/api/interviews/:id", async (req, res) => {
   }
 });
 
-// 6. Delete interview by ID
+// Delete interview by ID
 app.delete("/api/interviews/:id", async (req, res) => {
   try {
     const deleted = await deleteInterviewById(req.params.id);

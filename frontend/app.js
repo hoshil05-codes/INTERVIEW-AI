@@ -1294,6 +1294,7 @@ async function analyze() {
         "/api/interview/upload",
         {
           method: "POST",
+          headers: getAuthHeaders(),
           body: form
         }
       );
@@ -1332,7 +1333,8 @@ async function analyze() {
           method: "POST",
           headers: {
             "Content-Type":
-              "application/json"
+              "application/json",
+            ...getAuthHeaders()
           },
 
           body: JSON.stringify({
@@ -1645,7 +1647,10 @@ async function loadPastList() {
 
     const res =
       await fetch(
-        "/api/interviews"
+        "/api/interviews",
+        {
+          headers: getAuthHeaders()
+        }
       );
 
     if (!res.ok) {
@@ -1748,7 +1753,8 @@ async function loadPastList() {
         if (!confirm("Are you sure you want to delete this interview record?")) return;
         try {
           const res = await fetch(`/api/interviews/${encodeURIComponent(item.id || item.interview_id)}`, {
-            method: "DELETE"
+            method: "DELETE",
+            headers: getAuthHeaders()
           });
           if (!res.ok) throw new Error("Could not delete interview.");
           loadPastList();
@@ -1789,7 +1795,10 @@ async function openPast(id) {
       await fetch(
         `/api/interviews/${encodeURIComponent(
           id
-        )}`
+        )}`,
+        {
+          headers: getAuthHeaders()
+        }
       );
 
     if (!res.ok) {
@@ -1830,9 +1839,244 @@ async function openPast(id) {
 
 
 // ============================================================
+// STEP 23: USER AUTHENTICATION CONTROLLER
+// ============================================================
+
+let authToken = localStorage.getItem("intervai_token") || null;
+let currentUser = null;
+try {
+  currentUser = JSON.parse(localStorage.getItem("intervai_user") || "null");
+} catch (_) {
+  currentUser = null;
+}
+let currentAuthMode = "login";
+
+function getAuthHeaders() {
+  const headers = {};
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
+  }
+  return headers;
+}
+
+function updateAuthUI() {
+  const guestBox = $("auth-nav-guest");
+  const userBox = $("auth-nav-user");
+  const greeting = $("user-greeting");
+
+  if (currentUser) {
+    if (guestBox) guestBox.hidden = true;
+    if (userBox) userBox.hidden = false;
+    if (greeting) {
+      const displayName = currentUser.name ? currentUser.name.split(" ")[0] : "User";
+      greeting.textContent = `👤 ${displayName}`;
+    }
+  } else {
+    if (guestBox) guestBox.hidden = false;
+    if (userBox) userBox.hidden = true;
+  }
+}
+
+async function verifyAuthSession() {
+  if (!authToken) {
+    currentUser = null;
+    updateAuthUI();
+    return;
+  }
+  try {
+    const res = await fetch("/api/auth/me", {
+      headers: getAuthHeaders()
+    });
+    if (res.ok) {
+      const data = await res.json();
+      currentUser = data.user;
+      localStorage.setItem("intervai_user", JSON.stringify(currentUser));
+    } else {
+      logoutUser(false);
+    }
+  } catch (_) {
+    // network glitch, retain cached user session
+  }
+  updateAuthUI();
+}
+
+function setAuthMode(mode) {
+  currentAuthMode = mode;
+  const isSignup = mode === "signup";
+
+  const tabLogin = $("tab-auth-login");
+  const tabSignup = $("tab-auth-signup");
+  const fieldName = $("auth-field-name");
+  const title = $("auth-title");
+  const submitBtn = $("btn-auth-submit");
+  const prompt = $("auth-footer-prompt");
+  const errBox = $("auth-error");
+  const succBox = $("auth-success");
+
+  if (errBox) errBox.hidden = true;
+  if (succBox) succBox.hidden = true;
+
+  if (tabLogin) {
+    tabLogin.classList.toggle("active", !isSignup);
+    tabLogin.setAttribute("aria-selected", String(!isSignup));
+  }
+  if (tabSignup) {
+    tabSignup.classList.toggle("active", isSignup);
+    tabSignup.setAttribute("aria-selected", String(isSignup));
+  }
+  if (fieldName) {
+    fieldName.hidden = !isSignup;
+    const nameInput = $("auth-input-name");
+    if (nameInput) nameInput.required = isSignup;
+  }
+  if (title) {
+    title.textContent = isSignup ? "Create an Account" : "Sign In to IntervAI";
+  }
+  if (submitBtn) {
+    submitBtn.textContent = isSignup ? "Create Account" : "Sign In";
+  }
+  if (prompt) {
+    prompt.innerHTML = isSignup
+      ? 'Already have an account? <button type="button" id="btn-switch-signup" class="auth-switch-link">Sign in</button>'
+      : 'Don\'t have an account? <button type="button" id="btn-switch-signup" class="auth-switch-link">Sign up</button>';
+    const switchBtn = $("btn-switch-signup");
+    if (switchBtn) {
+      switchBtn.addEventListener("click", () => {
+        setAuthMode(currentAuthMode === "login" ? "signup" : "login");
+      });
+    }
+  }
+}
+
+function openAuthModal(mode = "login") {
+  const modal = $("auth-modal");
+  if (!modal) return;
+  setAuthMode(mode);
+  modal.hidden = false;
+  const emailInput = $("auth-input-email");
+  if (emailInput) emailInput.focus();
+}
+
+function closeAuthModal() {
+  const modal = $("auth-modal");
+  if (modal) modal.hidden = true;
+}
+
+function loginSuccess(token, user) {
+  authToken = token;
+  currentUser = user;
+  localStorage.setItem("intervai_token", token);
+  localStorage.setItem("intervai_user", JSON.stringify(user));
+  updateAuthUI();
+  closeAuthModal();
+  loadPastList();
+}
+
+function logoutUser(shouldReload = true) {
+  authToken = null;
+  currentUser = null;
+  localStorage.removeItem("intervai_token");
+  localStorage.removeItem("intervai_user");
+  updateAuthUI();
+  if (shouldReload) {
+    loadPastList();
+  }
+}
+
+// Bind auth UI events
+if ($("btn-open-login")) {
+  $("btn-open-login").addEventListener("click", () => openAuthModal("login"));
+}
+
+if ($("btn-logout")) {
+  $("btn-logout").addEventListener("click", () => logoutUser());
+}
+
+if ($("btn-close-auth")) {
+  $("btn-close-auth").addEventListener("click", closeAuthModal);
+}
+
+const authOverlay = $("auth-modal");
+if (authOverlay) {
+  authOverlay.addEventListener("click", (e) => {
+    if (e.target === authOverlay) closeAuthModal();
+  });
+}
+
+if ($("tab-auth-login")) {
+  $("tab-auth-login").addEventListener("click", () => setAuthMode("login"));
+}
+
+if ($("tab-auth-signup")) {
+  $("tab-auth-signup").addEventListener("click", () => setAuthMode("signup"));
+}
+
+const authForm = $("auth-form");
+if (authForm) {
+  authForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errBox = $("auth-error");
+    const succBox = $("auth-success");
+    const submitBtn = $("btn-auth-submit");
+
+    if (errBox) errBox.hidden = true;
+    if (succBox) succBox.hidden = true;
+
+    const email = $("auth-input-email") ? $("auth-input-email").value.trim() : "";
+    const password = $("auth-input-password") ? $("auth-input-password").value : "";
+    const name = $("auth-input-name") ? $("auth-input-name").value.trim() : "";
+
+    const isSignup = currentAuthMode === "signup";
+    const endpoint = isSignup ? "/api/auth/register" : "/api/auth/login";
+    const payload = isSignup ? { name, email, password } : { email, password };
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Please wait...";
+    }
+
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data.message || (isSignup ? "Sign up failed." : "Login failed."));
+      }
+
+      if (succBox) {
+        succBox.textContent = data.message || "Success!";
+        succBox.hidden = false;
+      }
+
+      setTimeout(() => {
+        loginSuccess(data.token, data.user);
+      }, 500);
+    } catch (err) {
+      if (errBox) {
+        errBox.textContent = err.message || "Authentication failed.";
+        errBox.hidden = false;
+      }
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = isSignup ? "Create Account" : "Sign In";
+      }
+    }
+  });
+}
+
+// Initial session check and UI update
+updateAuthUI();
+verifyAuthSession();
+
+// ============================================================
 // APP START
 // ============================================================
 
 console.log(
-  "Interview AI frontend loaded successfully."
+  "Interview AI frontend with authentication loaded successfully."
 );
