@@ -903,7 +903,7 @@ Scoring criteria:
 - "structure_score": Integer from 1 to 10 for answer organization, conciseness, and use of STAR framework.
 - If no interview speech exists (e.g. silence, ringtone, background music only), note it in the summary and set all scores to 0 or null.
 - Base all feedback directly on the audio content.
-- Do NOT include markdown blocks (```json). Return raw JSON only.
+- Do NOT include markdown blocks (\`\`\`json). Return raw JSON only.
 `;
 
     const response = await generateWithRetry({
