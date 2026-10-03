@@ -167,6 +167,26 @@
           </div>
         </div>
 
+        <!-- RESUME / JOB DESCRIPTION (JD) AI QUESTION GENERATOR -->
+        <div class="practice-step-box resume-jd-generator-box">
+          <div class="resume-jd-head">
+            <div>
+              <span class="resume-jd-badge">✨ AI Tailored Questions</span>
+              <h3 class="resume-jd-title">Generate Questions from Your Resume or Job Description (JD)</h3>
+              <p class="resume-jd-sub">Paste job requirements or resume summary to auto-generate 5 tailored interview questions.</p>
+            </div>
+          </div>
+          <div class="resume-jd-input-wrap">
+            <textarea id="practice-resume-jd-input" class="resume-jd-textarea" rows="3" placeholder="Paste Job Description (JD) or Resume summary here... (e.g. Senior Full Stack Engineer with 4+ years in React, Node.js, PostgreSQL, Docker, Microservices...)"></textarea>
+            <div class="resume-jd-actions">
+              <button type="button" id="btn-generate-jd-questions" class="btn secondary">
+                <span id="jd-btn-icon">🪄</span> <span id="jd-btn-text">Generate Custom Questions with AI</span>
+              </button>
+              <span id="resume-jd-status" class="resume-jd-status" hidden></span>
+            </div>
+          </div>
+        </div>
+
         <!-- 3. QUESTION SELECTION -->
         <div class="practice-step-box">
           <div class="practice-q-header">
@@ -269,6 +289,28 @@
           </div>
         </div>
 
+        <!-- WEBCAM VIDEO MOCK INTERVIEW MODE (Optional HireVue / Zoom Style) -->
+        <div class="webcam-mock-bar">
+          <button type="button" id="btn-toggle-webcam" class="btn-webcam-toggle">
+            <span id="webcam-btn-icon">📹</span> <span id="webcam-btn-text">Turn On Video Camera (Mock Interview Mode)</span>
+          </button>
+          <span class="webcam-hint">Simulate real video interview calls (HireVue / Zoom / Teams)</span>
+        </div>
+
+        <div id="webcam-container" class="webcam-container" hidden>
+          <div class="webcam-video-wrapper">
+            <video id="webcam-video" autoplay playsinline muted></video>
+            <div class="webcam-live-indicator">
+              <span class="live-dot"></span> LIVE VIDEO PREVIEW
+            </div>
+            <div class="webcam-face-guide" aria-hidden="true">
+              <div class="face-guide-oval"></div>
+              <span class="face-guide-label">Keep face centered &amp; maintain eye contact</span>
+            </div>
+            <button type="button" id="btn-close-webcam" class="webcam-close-btn" title="Turn camera off">&times;</button>
+          </div>
+        </div>
+
         <div class="recorder">
           <div class="timer" id="timer">00:00:00</div>
           <div class="meter" id="meter" aria-hidden="true"></div>
@@ -331,8 +373,46 @@
 
     <!-- PAST INTERVIEWS -->
     <section id="view-past" aria-label="Past interviews" hidden>
-      <p class="eyebrow">Everything you've recorded so far</p>
-      <h2>Past interviews</h2>
+      <p class="eyebrow">Continuous Improvement &amp; Interview Readiness</p>
+      <h2>Past interviews &amp; Performance Analytics</h2>
+
+      <!-- PERFORMANCE ANALYTICS DASHBOARD -->
+      <div id="past-analytics-dashboard" class="past-analytics-dashboard" hidden>
+        <div class="analytics-stat-grid">
+          <div class="dash-stat-card">
+            <span class="dash-stat-label">Total Sessions</span>
+            <span class="dash-stat-val" id="dash-total-sessions">0</span>
+            <span class="dash-stat-note">Recorded mocks</span>
+          </div>
+          <div class="dash-stat-card">
+            <span class="dash-stat-label">Average Score</span>
+            <div class="dash-stat-score-wrap">
+              <span class="dash-stat-val" id="dash-avg-score">–</span>
+              <small>/10</small>
+            </div>
+            <span class="dash-stat-note" id="dash-score-trend">Continuous progress</span>
+          </div>
+          <div class="dash-stat-card">
+            <span class="dash-stat-label">STAR Mastery</span>
+            <span class="dash-stat-val" id="dash-star-mastery">–%</span>
+            <span class="dash-stat-note">Structured delivery</span>
+          </div>
+          <div class="dash-stat-card">
+            <span class="dash-stat-label">Avg Speaking Pace</span>
+            <span class="dash-stat-val" id="dash-avg-wpm">–</span>
+            <span class="dash-stat-note" id="dash-wpm-status">Words / minute</span>
+          </div>
+        </div>
+
+        <div class="readiness-banner" id="dash-readiness-banner">
+          <div class="readiness-icon" id="dash-readiness-icon">🏆</div>
+          <div>
+            <strong id="dash-readiness-title">Interview Readiness: Foundation Level</strong>
+            <p id="dash-readiness-desc">Practice at least 2 sessions to establish benchmark scoring and unlock staff-level insights.</p>
+          </div>
+        </div>
+      </div>
+
       <ul id="past-list" class="past-list"></ul>
       <p id="past-empty" class="muted" hidden>Nothing here yet. Run your first interview and it'll show up in this list.</p>
     </section>
@@ -419,6 +499,72 @@
           </div>
         </div>
       </section>
+
+      <!-- SPEECH DELIVERY & VOCAL PACING INSIGHTS (WPM + FILLER WORDS) -->
+      <section class="delivery-insights-section" aria-label="Speech Delivery and Pacing">
+        <h3 class="breakdown-heading">Speech Delivery &amp; Vocal Pacing Insights</h3>
+        <div class="delivery-insights-grid">
+          <!-- WPM Card -->
+          <div class="insight-card">
+            <div class="insight-head">
+              <span class="insight-icon">⏱️</span>
+              <div>
+                <h4 class="insight-title">Speaking Pace (Tempo)</h4>
+                <p class="insight-sub" id="pacing-feedback-text">Optimal pace (130-160 WPM)</p>
+              </div>
+            </div>
+            <div class="insight-value-row">
+              <span class="insight-big-value" id="r-wpm-value">138</span>
+              <span class="insight-unit">WPM (Words / Min)</span>
+              <span class="insight-badge badge-optimal" id="r-wpm-badge">🟢 Optimal</span>
+            </div>
+            <div class="wpm-gauge-bar">
+              <div class="wpm-zone zone-slow" title="Slow (<120 WPM)"></div>
+              <div class="wpm-zone zone-optimal" title="Optimal (120-165 WPM)"></div>
+              <div class="wpm-zone zone-fast" title="Fast (>165 WPM)"></div>
+              <div class="wpm-marker" id="r-wpm-marker" style="left: 50%;"></div>
+            </div>
+            <div class="wpm-scale-labels">
+              <span>Slow (&lt;120)</span>
+              <span>Optimal (125-160)</span>
+              <span>Fast (&gt;165)</span>
+            </div>
+          </div>
+
+          <!-- Filler Words Card -->
+          <div class="insight-card">
+            <div class="insight-head">
+              <span class="insight-icon">🗣️</span>
+              <div>
+                <h4 class="insight-title">Filler Words Tracker</h4>
+                <p class="insight-sub">Detects crutches ("um", "like", "basically", etc.)</p>
+              </div>
+            </div>
+            <div class="insight-value-row">
+              <span class="insight-big-value" id="r-fillers-count">0</span>
+              <span class="insight-unit">Filler words detected</span>
+              <span class="insight-badge badge-clean" id="r-fillers-badge">🌟 Crisp &amp; Fluent</span>
+            </div>
+            <div class="filler-chips-list" id="r-filler-chips">
+              <span class="filler-chip empty">None detected! Crisp verbal fluency.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- LIVE AI INTERVIEWER FOLLOW-UP CROSS-QUESTION CARD -->
+      <div id="r-followup-card" class="followup-card" hidden>
+        <div class="followup-badge-row">
+          <span class="followup-badge">⚡ AI Interviewer Cross-Question</span>
+          <span class="followup-sub">Multi-turn conversational depth test</span>
+        </div>
+        <p class="followup-q-text" id="r-followup-question"></p>
+        <div class="followup-action-row">
+          <button type="button" id="btn-answer-followup" class="btn primary">
+            🎙️ Practice Answering This Follow-Up Question &rarr;
+          </button>
+        </div>
+      </div>
 
       <p id="r-summary" class="summary"></p>
 

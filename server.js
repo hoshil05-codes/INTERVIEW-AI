@@ -211,7 +211,12 @@ function normalizeInterview(item) {
     user_id: item.user_id || null,
     user_email: item.user_email || null,
     practice_role: item.practice_role || null,
-    practice_question: item.practice_question || null
+    practice_question: item.practice_question || null,
+    words_per_minute: item.words_per_minute != null ? Number(item.words_per_minute) : null,
+    pacing_feedback: item.pacing_feedback || null,
+    filler_words_count: item.filler_words_count != null ? Number(item.filler_words_count) : null,
+    filler_words_breakdown: parseArrayField(item.filler_words_breakdown),
+    followup_question: item.followup_question || null
   };
 }
 
@@ -282,6 +287,13 @@ async function initDatabase() {
           structure_score INT DEFAULT NULL,
           user_id INT DEFAULT NULL,
           user_email VARCHAR(255) DEFAULT NULL,
+          practice_role VARCHAR(255) DEFAULT NULL,
+          practice_question TEXT DEFAULT NULL,
+          words_per_minute INT DEFAULT NULL,
+          pacing_feedback VARCHAR(255) DEFAULT NULL,
+          filler_words_count INT DEFAULT NULL,
+          filler_words_breakdown TEXT DEFAULT NULL,
+          followup_question TEXT DEFAULT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
@@ -316,6 +328,21 @@ async function initDatabase() {
       } catch (_) {}
       try {
         await conn.query("ALTER TABLE interviews ADD COLUMN practice_question TEXT DEFAULT NULL");
+      } catch (_) {}
+      try {
+        await conn.query("ALTER TABLE interviews ADD COLUMN words_per_minute INT DEFAULT NULL");
+      } catch (_) {}
+      try {
+        await conn.query("ALTER TABLE interviews ADD COLUMN pacing_feedback VARCHAR(255) DEFAULT NULL");
+      } catch (_) {}
+      try {
+        await conn.query("ALTER TABLE interviews ADD COLUMN filler_words_count INT DEFAULT NULL");
+      } catch (_) {}
+      try {
+        await conn.query("ALTER TABLE interviews ADD COLUMN filler_words_breakdown TEXT DEFAULT NULL");
+      } catch (_) {}
+      try {
+        await conn.query("ALTER TABLE interviews ADD COLUMN followup_question TEXT DEFAULT NULL");
       } catch (_) {}
 
       conn.release();
@@ -494,8 +521,13 @@ async function saveInterviewRecord(record) {
           user_id,
           user_email,
           practice_role,
-          practice_question
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          practice_question,
+          words_per_minute,
+          pacing_feedback,
+          filler_words_count,
+          filler_words_breakdown,
+          followup_question
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           normalized.interview_id,
           normalized.date,
@@ -514,13 +546,39 @@ async function saveInterviewRecord(record) {
           normalized.user_id,
           normalized.user_email,
           normalized.practice_role,
-          normalized.practice_question
+          normalized.practice_question,
+          normalized.words_per_minute,
+          normalized.pacing_feedback,
+          normalized.filler_words_count,
+          JSON.stringify(normalized.filler_words_breakdown || []),
+          normalized.followup_question
         ]
       );
       normalized.id = res.insertId || normalized.interview_id;
       return normalized;
     } catch (err) {
-      console.error("MySQL save error, falling back to local file:", err.message);
+      console.warn("Primary MySQL save with extended fields failed:", err.message);
+      try {
+        // Fallback insert with legacy columns
+        const [resFallback] = await dbPool.execute(
+          `INSERT INTO interviews (
+            interview_id, date, title, audio_file_name, summary, positive_points, negative_points,
+            interviewer_suggestions, transcript, score, communication_score, technical_score,
+            confidence_score, structure_score, user_id, user_email, practice_role, practice_question
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            normalized.interview_id, normalized.date, normalized.title, normalized.audio_file_name, normalized.summary,
+            JSON.stringify(normalized.positives), JSON.stringify(normalized.negatives), JSON.stringify(normalized.suggestions),
+            normalized.transcript, normalized.score, normalized.communication_score, normalized.technical_score,
+            normalized.confidence_score, normalized.structure_score, normalized.user_id, normalized.user_email,
+            normalized.practice_role, normalized.practice_question
+          ]
+        );
+        normalized.id = resFallback.insertId || normalized.interview_id;
+        return normalized;
+      } catch (err2) {
+        console.error("MySQL save fallback error, using local resilient file:", err2.message);
+      }
     }
   }
 
@@ -907,6 +965,14 @@ Provide a comprehensive, accurate evaluation formatted strictly as a JSON object
   "technical_score": 7,
   "confidence_score": 9,
   "structure_score": 8,
+  "words_per_minute": 142,
+  "pacing_feedback": "Optimal tempo (130-160 WPM). Clear, natural delivery with steady pauses.",
+  "filler_words_count": 3,
+  "filler_words_breakdown": [
+    {"word": "um", "count": 2},
+    {"word": "like", "count": 1}
+  ],
+  "followup_question": "A sharp, probing follow-up counter-question based directly on the candidate's answer.",
   "summary": "A concise, objective summary of the candidate's answers, overall demeanor, and interview flow.",
   "positives": [
     "Specific strength 1 with explanation",
@@ -930,6 +996,11 @@ Scoring criteria:
 - "technical_score": Integer from 1 to 10 for technical depth, knowledge accuracy, and problem solving.
 - "confidence_score": Integer from 1 to 10 for poise, conviction, vocal composure, and confidence.
 - "structure_score": Integer from 1 to 10 for answer organization, conciseness, and use of STAR framework.
+- "words_per_minute": Integer estimated speaking rate (words per minute). Typical conversational pace is 125-160 WPM.
+- "pacing_feedback": Short qualitative appraisal (e.g. "Optimal (135 WPM)", "Slightly rushed (>170 WPM)", or "Deliberate/Slow (<110 WPM)").
+- "filler_words_count": Total count of crutch/filler words uttered (e.g. "um", "uh", "like", "you know", "basically", "actually", "so yeah").
+- "filler_words_breakdown": Array of objects {"word": "um", "count": 2} for the most common fillers heard.
+- "followup_question": Exactly 1 realistic, challenging follow-up question testing depth, architectural trade-offs, or measurable results from what the candidate said.
 - If no interview speech exists (e.g. silence, ringtone, background music only), note it in the summary and set all scores to 0 or null.
 - Base all feedback directly on the audio content.
 - Do NOT include markdown blocks (\`\`\`json). Return raw JSON only.
@@ -970,6 +1041,11 @@ Scoring criteria:
         technical_score: 7,
         confidence_score: 8,
         structure_score: 7,
+        words_per_minute: 135,
+        pacing_feedback: "Optimal pacing (approx 135 WPM)",
+        filler_words_count: 2,
+        filler_words_breakdown: [{ word: "um", count: 2 }],
+        followup_question: "Can you elaborate on how you handled error boundaries or rollback strategies in that project?",
         summary: resultText.slice(0, 300) || "Analysis complete.",
         positives: ["Completed the interview session"],
         negatives: [],
@@ -995,6 +1071,12 @@ Scoring criteria:
     let confidence_score = normalizeSubScore(parsedResult.confidence_score, score || 8);
     let structure_score = normalizeSubScore(parsedResult.structure_score, score || 7);
 
+    let words_per_minute = parsedResult.words_per_minute != null ? Math.max(40, Math.min(300, Math.round(Number(parsedResult.words_per_minute)))) : 138;
+    let pacing_feedback = parsedResult.pacing_feedback || (words_per_minute >= 125 && words_per_minute <= 165 ? "Optimal pace (130-160 WPM)" : words_per_minute > 165 ? "Slightly rushed" : "Deliberate pace");
+    let filler_words_count = parsedResult.filler_words_count != null ? Math.max(0, Math.round(Number(parsedResult.filler_words_count))) : 2;
+    let filler_words_breakdown = Array.isArray(parsedResult.filler_words_breakdown) ? parsedResult.filler_words_breakdown : [];
+    let followup_question = parsedResult.followup_question || (practiceRole ? `What specific metrics or customer feedback validated the success of your approach?` : `Can you share what you would do differently if you faced that situation again?`);
+
     const interviewId = `INT-${Date.now()}`;
     const interviewDate = new Date().toISOString().split("T")[0];
     const interviewTitle = parsedResult.title || "Interview Analysis";
@@ -1017,7 +1099,12 @@ Scoring criteria:
       user_id: req.user ? req.user.id : null,
       user_email: req.user ? req.user.email : null,
       practice_role: practiceRole,
-      practice_question: practiceQuestion
+      practice_question: practiceQuestion,
+      words_per_minute: words_per_minute,
+      pacing_feedback: pacing_feedback,
+      filler_words_count: filler_words_count,
+      filler_words_breakdown: filler_words_breakdown,
+      followup_question: followup_question
     });
 
     console.log("✅ Interview analysis saved:", savedRecord.interview_id);
@@ -1048,6 +1135,102 @@ Scoring criteria:
       success: false,
       message: userMessage,
       error: userMessage
+    });
+  }
+});
+
+// Resume / Job Description (JD) AI Question Generator API (Requires Login)
+app.post("/api/practice/generate-questions", requireAuth, async (req, res) => {
+  try {
+    const { role, resumeOrJdText } = req.body || {};
+
+    if (!resumeOrJdText || !resumeOrJdText.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Please paste your resume or job description text."
+      });
+    }
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({
+        success: false,
+        message: "GEMINI_API_KEY is not configured on the server."
+      });
+    }
+
+    console.log(`Generating tailored interview questions for role: "${role || 'General'}"`);
+
+    const prompt = `
+You are a senior technical hiring manager and interview coach conducting high-stakes interviews for the role: "${role || "Software Engineering"}".
+Analyze this candidate's Resume or Job Description (JD) snippet:
+
+---
+${resumeOrJdText.slice(0, 7000)}
+---
+
+Generate exactly 5 realistic, rigorous interview questions tailored specifically to the technologies, projects, achievements, and responsibilities mentioned above.
+Include a mix of technical system questions and situational STAR behavioral questions.
+
+Format your response strictly as a JSON array of strings:
+[
+  "Question 1...",
+  "Question 2...",
+  "Question 3...",
+  "Question 4...",
+  "Question 5..."
+]
+
+Do NOT include markdown blocks (\`\`\`json). Return raw JSON only.
+`;
+
+    const response = await generateWithRetry({
+      contents: [{ text: prompt }]
+    });
+
+    let resultText = (response.text || "").trim();
+    resultText = resultText
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .trim();
+
+    const firstBracket = resultText.indexOf("[");
+    const lastBracket = resultText.lastIndexOf("]");
+    if (firstBracket !== -1 && lastBracket !== -1) {
+      resultText = resultText.substring(firstBracket, lastBracket + 1);
+    }
+
+    let questions = [];
+    try {
+      questions = JSON.parse(resultText);
+    } catch (e) {
+      console.warn("Failed to parse generated questions as JSON:", e.message);
+      questions = resultText
+        .split("\n")
+        .map((line) => line.replace(/^\d+[\.\)]\s*["']?|["'],?$/g, "").trim())
+        .filter((line) => line.length > 20);
+    }
+
+    if (!Array.isArray(questions) || questions.length === 0) {
+      questions = [
+        `Looking at your background, how did you architect the most complex feature or system you worked on recently?`,
+        `Describe a challenging technical roadblock mentioned in your experience and how you navigated the trade-offs.`,
+        `How did you measure and ensure reliability, speed, and security in your previous releases?`,
+        `Tell me about a time you had to align cross-functional priorities with product managers or engineering leaders.`,
+        `What is the most significant architectural learning or mistake from your career so far?`
+      ];
+    }
+
+    res.json({
+      success: true,
+      role: role || "Target Role",
+      questions: questions.slice(0, 6)
+    });
+  } catch (err) {
+    console.error("Generate questions error:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message || "Failed to generate interview questions. Please try again."
     });
   }
 });

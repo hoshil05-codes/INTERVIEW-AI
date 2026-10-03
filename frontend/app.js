@@ -621,6 +621,184 @@ if ($("btn-launch-practice")) {
   });
 }
 
+// ============================================================
+// RESUME / JOB DESCRIPTION (JD) QUESTION GENERATOR
+// ============================================================
+async function generateQuestionsFromResumeOrJd() {
+  const input = $("practice-resume-jd-input");
+  const statusEl = $("resume-jd-status");
+  const btn = $("btn-generate-jd-questions");
+  const btnText = $("jd-btn-text");
+  const btnIcon = $("jd-btn-icon");
+
+  if (!input) return;
+  const text = input.value.trim();
+
+  if (!text) {
+    if (statusEl) {
+      statusEl.className = "resume-jd-status error";
+      statusEl.textContent = "⚠️ Please paste your resume summary or job description first.";
+      statusEl.hidden = false;
+    }
+    input.focus();
+    return;
+  }
+
+  if (statusEl) {
+    statusEl.className = "resume-jd-status loading";
+    statusEl.textContent = "🤖 Gemini analyzing resume skills & tailoring questions...";
+    statusEl.hidden = false;
+  }
+  if (btn) btn.disabled = true;
+  if (btnText) btnText.textContent = "Generating with AI...";
+  if (btnIcon) btnIcon.textContent = "⏳";
+
+  try {
+    const res = await fetch("/api/practice/generate-questions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({
+        role: currentPracticeRole,
+        resumeOrJdText: text
+      })
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error(data.message || "Failed to generate questions.");
+    }
+
+    if (Array.isArray(data.questions) && data.questions.length > 0) {
+      const customRoleKey = currentPracticeRoleKey;
+      if (!PRACTICE_QUESTIONS[customRoleKey]) {
+        PRACTICE_QUESTIONS[customRoleKey] = {
+          name: currentPracticeRole,
+          icon: "🎯",
+          questions: []
+        };
+      }
+
+      // Prepend generated questions with current track
+      const newQuestions = data.questions.map((q) => ({
+        q,
+        track: currentPracticeTrack
+      }));
+
+      PRACTICE_QUESTIONS[customRoleKey].questions = [
+        ...newQuestions,
+        ...PRACTICE_QUESTIONS[customRoleKey].questions
+      ];
+
+      currentPracticeQuestionIndex = 0;
+      currentPracticeQuestion = data.questions[0];
+      renderPracticeQuestions();
+
+      if (statusEl) {
+        statusEl.className = "resume-jd-status";
+        statusEl.textContent = `✅ Successfully created ${data.questions.length} tailored questions from your Resume / JD!`;
+        statusEl.hidden = false;
+      }
+      showToast("✨ 5 tailored questions generated and selected!");
+    }
+  } catch (err) {
+    console.error("Resume question error:", err);
+    if (statusEl) {
+      statusEl.className = "resume-jd-status error";
+      statusEl.textContent = `❌ ${err.message || "Failed to generate questions."}`;
+      statusEl.hidden = false;
+    }
+  } finally {
+    if (btn) btn.disabled = false;
+    if (btnText) btnText.textContent = "Generate Custom Questions with AI";
+    if (btnIcon) btnIcon.textContent = "🪄";
+  }
+}
+
+if ($("btn-generate-jd-questions")) {
+  $("btn-generate-jd-questions").addEventListener("click", generateQuestionsFromResumeOrJd);
+}
+
+// ============================================================
+// WEBCAM VIDEO MOCK INTERVIEW MODE CONTROLLER (HIREVUE STYLE)
+// ============================================================
+let webcamStream = null;
+let isWebcamActive = false;
+
+async function startWebcam() {
+  clearError();
+  const container = $("webcam-container");
+  const video = $("webcam-video");
+  const toggleBtn = $("btn-toggle-webcam");
+  const btnText = $("webcam-btn-text");
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showError("Camera access is not supported on this browser.");
+    return;
+  }
+
+  try {
+    webcamStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        facingMode: "user"
+      },
+      audio: false
+    });
+
+    if (video) {
+      video.srcObject = webcamStream;
+      video.play().catch(() => {});
+    }
+
+    if (container) container.hidden = false;
+    isWebcamActive = true;
+    if (toggleBtn) toggleBtn.classList.add("active");
+    if (btnText) btnText.textContent = "Camera Active (Click to Turn Off)";
+  } catch (err) {
+    console.warn("Webcam error:", err);
+    showError("Could not access camera. Please allow camera permissions and try again.");
+    stopWebcam();
+  }
+}
+
+function stopWebcam() {
+  if (webcamStream) {
+    webcamStream.getTracks().forEach((track) => track.stop());
+    webcamStream = null;
+  }
+  isWebcamActive = false;
+  const container = $("webcam-container");
+  const video = $("webcam-video");
+  const toggleBtn = $("btn-toggle-webcam");
+  const btnText = $("webcam-btn-text");
+
+  if (video) video.srcObject = null;
+  if (container) container.hidden = true;
+  if (toggleBtn) toggleBtn.classList.remove("active");
+  if (btnText) btnText.textContent = "Turn On Video Camera (Mock Interview Mode)";
+}
+
+function toggleWebcam() {
+  if (isWebcamActive) {
+    stopWebcam();
+  } else {
+    startWebcam();
+  }
+}
+
+if ($("btn-toggle-webcam")) {
+  $("btn-toggle-webcam").addEventListener("click", toggleWebcam);
+}
+
+if ($("btn-close-webcam")) {
+  $("btn-close-webcam").addEventListener("click", stopWebcam);
+}
+
 // Prompter Actions in Recording Screen
 if ($("btn-prompter-speak")) {
   $("btn-prompter-speak").addEventListener("click", speakCurrentQuestion);
@@ -2080,6 +2258,94 @@ function renderResult(data) {
   if ($("score-struct")) $("score-struct").textContent = `${struct}/10`;
   if ($("bar-struct")) $("bar-struct").style.width = `${Math.min(100, Math.max(5, struct * 10))}%`;
 
+  // Render Speech Delivery & Vocal Pacing
+  const wpm = data.words_per_minute != null ? Math.round(Number(data.words_per_minute)) : 138;
+  const wpmFeedback = data.pacing_feedback || (wpm >= 125 && wpm <= 165 ? "Optimal pace (130-160 WPM)" : wpm > 165 ? "Slightly fast tempo" : "Deliberate pace");
+  if ($("r-wpm-value")) $("r-wpm-value").textContent = wpm;
+  if ($("pacing-feedback-text")) $("pacing-feedback-text").textContent = wpmFeedback;
+
+  // WPM Marker Position: mapped between 70 WPM and 210 WPM
+  const wpmPercent = Math.max(0, Math.min(100, Math.round(((wpm - 70) / (210 - 70)) * 100)));
+  if ($("r-wpm-marker")) $("r-wpm-marker").style.left = `${wpmPercent}%`;
+
+  const wpmBadge = $("r-wpm-badge");
+  if (wpmBadge) {
+    wpmBadge.className = "insight-badge";
+    if (wpm >= 125 && wpm <= 165) {
+      wpmBadge.classList.add("badge-optimal");
+      wpmBadge.textContent = "🟢 Optimal";
+    } else if (wpm > 165) {
+      wpmBadge.classList.add("badge-danger");
+      wpmBadge.textContent = "🔴 Fast / Rushed";
+    } else {
+      wpmBadge.classList.add("badge-warning");
+      wpmBadge.textContent = "🟡 Deliberate / Slow";
+    }
+  }
+
+  // Filler words
+  const fillersCount = data.filler_words_count != null ? Math.round(Number(data.filler_words_count)) : 0;
+  if ($("r-fillers-count")) $("r-fillers-count").textContent = fillersCount;
+
+  const fillersBadge = $("r-fillers-badge");
+  if (fillersBadge) {
+    fillersBadge.className = "insight-badge";
+    if (fillersCount === 0) {
+      fillersBadge.classList.add("badge-clean");
+      fillersBadge.textContent = "🌟 Flawless Fluency";
+    } else if (fillersCount <= 3) {
+      fillersBadge.classList.add("badge-optimal");
+      fillersBadge.textContent = "🟢 Clean Delivery";
+    } else if (fillersCount <= 7) {
+      fillersBadge.classList.add("badge-warning");
+      fillersBadge.textContent = "🟡 Minor Fillers";
+    } else {
+      fillersBadge.classList.add("badge-danger");
+      fillersBadge.textContent = "🔴 High Fillers";
+    }
+  }
+
+  const chipsContainer = $("r-filler-chips");
+  if (chipsContainer) {
+    chipsContainer.replaceChildren();
+    let breakdown = data.filler_words_breakdown;
+    if (typeof breakdown === "string") {
+      try {
+        breakdown = JSON.parse(breakdown);
+      } catch (_) {
+        breakdown = [];
+      }
+    }
+    if (!Array.isArray(breakdown) || breakdown.length === 0 || fillersCount === 0) {
+      const emptyChip = document.createElement("span");
+      emptyChip.className = "filler-chip empty";
+      emptyChip.textContent = "None detected! Crisp verbal fluency.";
+      chipsContainer.appendChild(emptyChip);
+    } else {
+      breakdown.forEach((item) => {
+        const chip = document.createElement("span");
+        chip.className = "filler-chip";
+        const word = item.word || item.filler || "filler";
+        const count = item.count != null ? item.count : 1;
+        chip.innerHTML = `"${word}" <span class="chip-count">${count}</span>`;
+        chipsContainer.appendChild(chip);
+      });
+    }
+  }
+
+  // Live AI Follow-Up Cross-Question
+  const followupCard = $("r-followup-card");
+  if (followupCard) {
+    if (data.followup_question && String(data.followup_question).trim()) {
+      if ($("r-followup-question")) {
+        $("r-followup-question").textContent = `“${data.followup_question}”`;
+      }
+      followupCard.hidden = false;
+    } else {
+      followupCard.hidden = true;
+    }
+  }
+
   if ($("r-summary")) {
     $("r-summary").textContent =
       data.summary || "";
@@ -2200,7 +2466,7 @@ function downloadPdfReport() {
     </div>
 
     <h3 style="color: #34291F; border-bottom: 1px solid #E9DCC8; padding-bottom: 5px; margin: 18px 0 10px; font-size: 16px;">Performance Breakdown</h3>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
       <div style="background: #F9F9F9; border: 1px solid #E6E6E6; border-radius: 6px; padding: 10px;">
         <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 4px; font-size: 13px;">
           <span>🗣️ Communication & Clarity</span>
@@ -2238,6 +2504,18 @@ function downloadPdfReport() {
         </div>
       </div>
     </div>
+
+    <!-- Speech Delivery & Vocal Pacing in PDF -->
+    <div style="background: #FDF9F3; border: 1px solid #E9DCC8; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; display: flex; justify-content: space-between; font-size: 12.5px;">
+      <div><strong>⏱️ Speaking Tempo:</strong> ${activeResultData.words_per_minute || 138} WPM (${activeResultData.pacing_feedback || 'Optimal pace'})</div>
+      <div><strong>🗣️ Filler Words:</strong> ${activeResultData.filler_words_count || 0} detected</div>
+    </div>
+
+    ${activeResultData.followup_question ? `
+    <div style="background: #FFF7ED; border-left: 4px solid #C2492E; padding: 10px 14px; border-radius: 4px; margin-bottom: 16px;">
+      <h4 style="margin: 0 0 4px; color: #C2492E; font-size: 13px;">⚡ AI Interviewer Cross-Question</h4>
+      <p style="margin: 0; font-size: 12.5px; font-style: italic;">“${activeResultData.followup_question}”</p>
+    </div>` : ''}
 
     <h3 style="color: #34291F; border-bottom: 1px solid #E9DCC8; padding-bottom: 5px; margin: 18px 0 8px; font-size: 16px;">Executive Evaluation Summary</h3>
     <p style="font-size: 13px; line-height: 1.6; margin: 0 0 16px;">${activeResultData.summary || "No summary recorded."}</p>
@@ -2361,38 +2639,97 @@ if ($("btn-share-report")) {
   $("btn-share-report").addEventListener("click", shareReport);
 }
 
+if ($("btn-answer-followup")) {
+  $("btn-answer-followup").addEventListener("click", () => {
+    if (!activeResultData || !activeResultData.followup_question) return;
+    isPracticeMode = true;
+    currentPracticeQuestion = activeResultData.followup_question;
+    currentPracticeTrack = "Situational & Real Scenarios";
+    if (activeResultData.practice_role) {
+      currentPracticeRole = activeResultData.practice_role;
+    }
+    showView("new");
+    goStep("screen-record");
+    updatePrompterUI();
+    loadMics();
+    showToast("🎯 Follow-up question loaded! Ready for Round 2 practice.");
+  });
+}
+
 // ============================================================
-// STEP 21: PAST INTERVIEWS
+// STEP 21: PAST INTERVIEWS & PERFORMANCE ANALYTICS
 // ============================================================
 
 async function loadPastList() {
-
-  const list =
-    $("past-list");
-
+  const list = $("past-list");
   if (!list) return;
 
   list.replaceChildren();
 
   try {
-
-    const res =
-      await fetch(
-        "/api/interviews",
-        {
-          headers: getAuthHeaders()
-        }
-      );
+    const res = await fetch("/api/interviews", {
+      headers: getAuthHeaders()
+    });
 
     if (!res.ok) {
-      throw new Error(
-        "Could not load interviews."
-      );
+      throw new Error("Could not load interviews.");
     }
 
-    const items =
-      await res.json();
+    const items = await res.json();
 
+    // Render Performance Analytics Dashboard
+    const dash = $("past-analytics-dashboard");
+    if (dash) {
+      if (items.length > 0) {
+        dash.hidden = false;
+        const total = items.length;
+        const scoredItems = items.filter((i) => i.score != null);
+        const avgScoreVal = scoredItems.length
+          ? (scoredItems.reduce((acc, curr) => acc + Number(curr.score), 0) / scoredItems.length).toFixed(1)
+          : "–";
+
+        const structItems = items.filter((i) => i.structure_score != null);
+        const avgStructVal = structItems.length
+          ? Math.round((structItems.reduce((acc, curr) => acc + Number(curr.structure_score), 0) / structItems.length) * 10)
+          : (scoredItems.length ? Math.round(Number(avgScoreVal) * 10) : 75);
+
+        const wpmItems = items.filter((i) => i.words_per_minute != null && i.words_per_minute > 0);
+        const avgWpmVal = wpmItems.length
+          ? Math.round(wpmItems.reduce((acc, curr) => acc + Number(curr.words_per_minute), 0) / wpmItems.length)
+          : 138;
+
+        if ($("dash-total-sessions")) $("dash-total-sessions").textContent = total;
+        if ($("dash-avg-score")) $("dash-avg-score").textContent = avgScoreVal;
+        if ($("dash-star-mastery")) $("dash-star-mastery").textContent = `${avgStructVal}%`;
+        if ($("dash-avg-wpm")) $("dash-avg-wpm").textContent = `${avgWpmVal} WPM`;
+
+        // Determine Readiness Level Badge
+        const numAvg = Number(avgScoreVal) || 0;
+        const iconEl = $("dash-readiness-icon");
+        const titleEl = $("dash-readiness-title");
+        const descEl = $("dash-readiness-desc");
+
+        if (total < 2) {
+          if (iconEl) iconEl.textContent = "🌱";
+          if (titleEl) titleEl.textContent = "Interview Readiness: Getting Started";
+          if (descEl) descEl.textContent = "Great start! Practice 1 more session to establish your performance benchmark and track trajectory.";
+        } else if (numAvg >= 8.0) {
+          if (iconEl) iconEl.textContent = "🥇";
+          if (titleEl) titleEl.textContent = "Interview Readiness: Top Tier / Staff Ready";
+          if (descEl) descEl.textContent = `Outstanding! Your ${avgScoreVal}/10 avg score places you in the top 5% candidate tier for Senior & Lead positions.`;
+        } else if (numAvg >= 6.5) {
+          if (iconEl) iconEl.textContent = "🥈";
+          if (titleEl) titleEl.textContent = "Interview Readiness: Confident & Proficient";
+          if (descEl) descEl.textContent = `Strong delivery! With ${avgScoreVal}/10 avg score and ${avgStructVal}% STAR structure mastery, you are ready for final rounds.`;
+        } else {
+          if (iconEl) iconEl.textContent = "🥉";
+          if (titleEl) titleEl.textContent = "Interview Readiness: Foundation Building";
+          if (descEl) descEl.textContent = "Keep practicing! Use the STAR answering guide to structure answers with quantifiable results.";
+        }
+      } else {
+        dash.hidden = true;
+      }
+    }
 
     if ($("past-empty")) {
       $("past-empty").hidden =
