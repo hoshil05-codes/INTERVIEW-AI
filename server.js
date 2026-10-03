@@ -39,16 +39,17 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY
 });
 
-const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
-// Active and available Gemini models prioritized by availability & quota
-const FALLBACK_MODELS = [
-  DEFAULT_MODEL,
-  "gemini-3.5-flash",
-  "gemini-3.5-flash-lite",
-  "gemini-3.6-flash",
-  "gemini-3.7-flash",
-  "gemini-3.8-flash"
-];
+const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+// Active and available Gemini models prioritized by verified availability & quota
+const FALLBACK_MODELS = Array.from(
+  new Set([
+    DEFAULT_MODEL,
+    "gemini-3.6-flash",
+    "gemini-3.7-flash",
+    "gemini-3.8-flash",
+    "gemini-3.5-flash"
+  ])
+);
 
 function getAudioMimeType(filePath) {
   const ext = path.extname(filePath).toLowerCase();
@@ -74,44 +75,51 @@ function getAudioMimeType(filePath) {
   }
 }
 
-async function generateWithRetry(request, retries = 4) {
+async function generateWithRetry(request, retries = 1) {
   let lastError = null;
 
   for (const modelName of FALLBACK_MODELS) {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
+        console.log(`[Gemini] Calling model "${modelName}" (attempt ${attempt + 1}/${retries + 1})...`);
         const req = { ...request, model: modelName };
-        return await ai.models.generateContent(req);
+        const res = await ai.models.generateContent(req);
+        console.log(`[Gemini] ✅ Success with model "${modelName}"`);
+        return res;
       } catch (error) {
         lastError = error;
         const msg = error.message || "";
+        const status = error.status || (error.error && error.error.code);
 
-        // If rate limited or model busy (503 / 429), retry with exponential backoff + jitter
+        console.warn(`[Gemini] Model "${modelName}" failed (status ${status}):`, msg.slice(0, 120));
+
+        // If rate limited or model busy (503 / 429), quick 1s retry then switch to fallback
         if (
+          status === 503 ||
+          status === 429 ||
           msg.includes("503") ||
           msg.includes("429") ||
           msg.includes("resource exhausted") ||
           msg.includes("high demand") ||
-          msg.includes("overloaded")
+          msg.includes("overloaded") ||
+          msg.includes("UNAVAILABLE")
         ) {
-          if (attempt === retries) {
-            console.warn(`Model ${modelName} retries exhausted, trying fallback model...`);
+          if (attempt >= retries) {
+            console.warn(`[Gemini] Model "${modelName}" busy, switching immediately to next fallback model...`);
             break;
           }
-          const jitter = Math.floor(Math.random() * 1000);
-          const wait = Math.min(18000, 2000 * Math.pow(2, attempt) + jitter);
-          console.log(`Gemini ${modelName} busy/high-demand. Retrying in ${(wait / 1000).toFixed(1)}s (attempt ${attempt + 1}/${retries})...`);
-          await new Promise((r) => setTimeout(r, wait));
+          console.log(`[Gemini] Retrying "${modelName}" in 1.2s...`);
+          await new Promise((r) => setTimeout(r, 1200));
           continue;
         }
 
         // If model not found or unsupported (404), switch to next model immediately
-        if (msg.includes("not found") || msg.includes("404") || msg.includes("no longer available")) {
-          console.warn(`Model ${modelName} not available, switching to next model...`);
+        if (status === 404 || msg.includes("not found") || msg.includes("404") || msg.includes("no longer available")) {
+          console.warn(`[Gemini] Model "${modelName}" not available, switching immediately to next model...`);
           break;
         }
 
-        // Other errors
+        // Other errors (e.g. invalid arguments)
         throw error;
       }
     }
