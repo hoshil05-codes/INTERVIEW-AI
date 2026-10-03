@@ -32,9 +32,10 @@ const ai = new GoogleGenAI({
 });
 
 const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
-const FALLBACK_MODELS = [DEFAULT_MODEL, "gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash"];
+// Only active and supported Gemini models in current Gemini API
+const FALLBACK_MODELS = [DEFAULT_MODEL, "gemini-3.5-flash"];
 
-async function generateWithRetry(request, retries = 3) {
+async function generateWithRetry(request, retries = 4) {
   let lastError = null;
 
   for (const modelName of FALLBACK_MODELS) {
@@ -46,19 +47,29 @@ async function generateWithRetry(request, retries = 3) {
         lastError = error;
         const msg = error.message || "";
 
-        // If model not found or unsupported, move to next model immediately
-        if (msg.includes("not found") || msg.includes("404") || msg.includes("unsupported")) {
-          console.warn(`Model ${modelName} not available, trying next fallback model...`);
-          break;
-        }
-
-        // If rate limited or server busy (503 / 429), retry with backoff
-        if (msg.includes("503") || msg.includes("429") || msg.includes("resource exhausted")) {
-          if (attempt === retries) break;
-          const wait = 2000 * Math.pow(2, attempt);
-          console.log(`Gemini busy/rate-limited (${modelName}). Retrying in ${wait / 1000}s...`);
+        // If rate limited or model busy (503 / 429), retry with exponential backoff + jitter
+        if (
+          msg.includes("503") ||
+          msg.includes("429") ||
+          msg.includes("resource exhausted") ||
+          msg.includes("high demand") ||
+          msg.includes("overloaded")
+        ) {
+          if (attempt === retries) {
+            console.warn(`Model ${modelName} retries exhausted, trying fallback model...`);
+            break;
+          }
+          const jitter = Math.floor(Math.random() * 1000);
+          const wait = Math.min(18000, 2000 * Math.pow(2, attempt) + jitter);
+          console.log(`Gemini ${modelName} busy/high-demand. Retrying in ${(wait / 1000).toFixed(1)}s (attempt ${attempt + 1}/${retries})...`);
           await new Promise((r) => setTimeout(r, wait));
           continue;
+        }
+
+        // If model not found or unsupported (404), switch to next model immediately
+        if (msg.includes("not found") || msg.includes("404") || msg.includes("no longer available")) {
+          console.warn(`Model ${modelName} not available, switching to next model...`);
+          break;
         }
 
         // Other errors
@@ -67,7 +78,7 @@ async function generateWithRetry(request, retries = 3) {
     }
   }
 
-  throw lastError || new Error("Failed to generate response from Gemini AI.");
+  throw lastError || new Error("Gemini AI is currently experiencing high demand. Please try again in a few moments.");
 }
 
 // =========================
@@ -612,10 +623,19 @@ Scoring criteria:
     });
   } catch (error) {
     console.error("❌ Gemini analysis error:", error);
+    let userMessage = error.message || "Gemini analysis failed";
+    if (
+      userMessage.includes("503") ||
+      userMessage.includes("high demand") ||
+      userMessage.includes("UNAVAILABLE") ||
+      userMessage.includes("overloaded")
+    ) {
+      userMessage = "Gemini AI model par temporary high demand hai. Kripya 5-10 second baad dobara Analyze click karein.";
+    }
     res.status(500).json({
       success: false,
-      message: error.message || "Gemini analysis failed",
-      error: error.message
+      message: userMessage,
+      error: userMessage
     });
   }
 });
