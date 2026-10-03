@@ -11,8 +11,9 @@ const { GoogleGenAI } = require("@google/genai");
 // =========================
 // DIRECTORIES
 // =========================
-const uploadsPath = path.join(__dirname, "uploads");
-const dataPath = path.join(__dirname, "data");
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const uploadsPath = isServerless ? path.join("/tmp", "uploads") : path.join(__dirname, "uploads");
+const dataPath = isServerless ? path.join("/tmp", "data") : path.join(__dirname, "data");
 const localDbPath = path.join(dataPath, "interviews.json");
 
 if (!fs.existsSync(uploadsPath)) {
@@ -706,4 +707,10 @@ async function startServer() {
   });
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+} else {
+  initDatabase().catch((err) => console.error("Database init error:", err));
+}
+
+module.exports = app;
