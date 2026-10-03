@@ -281,9 +281,15 @@ main { max-width: 46rem; margin: 0 auto; padding: 1.75rem 1.25rem 4rem; }
 
 /* ---------- past interviews ---------- */
 .past-list { list-style: none; margin: 0; padding: 0; }
-.past-list li { margin-bottom: 0.6rem; }
-.past-list button {
-  width: 100%;
+.past-list li {
+  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.past-list button.past-item-btn,
+.past-list > li > button:not(.btn-del) {
+  flex: 1;
   display: flex;
   justify-content: space-between;
   gap: 1rem;
@@ -295,9 +301,30 @@ main { max-width: 46rem; margin: 0 auto; padding: 1.75rem 1.25rem 4rem; }
   border-radius: var(--radius-md);
   color: var(--ink);
   cursor: pointer;
+  transition: background 0.15s ease;
 }
-.past-list button:hover { background: var(--panel-tint); }
+.past-list button.past-item-btn:hover,
+.past-list > li > button:not(.btn-del):hover { background: var(--panel-tint); }
 .past-list .when { color: var(--muted); white-space: nowrap; }
+.past-list .btn-del {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  font: inherit;
+  background: var(--panel);
+  border: 0;
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.past-list .btn-del:hover {
+  background: #fde8e8;
+  color: #c53030;
+}
 
 /* ---------- results ---------- */
 .results { margin-top: 2.75rem; }

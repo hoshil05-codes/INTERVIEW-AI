@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none">
+  <defs>
+    <linearGradient id="logo-grad" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#C2492E"/>
+      <stop offset="60%" stop-color="#B8622E"/>
+      <stop offset="100%" stop-color="#C98A2E"/>
+    </linearGradient>
+    <linearGradient id="inner-grad" x1="16" y1="10" x2="32" y2="38" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#FFF9F0"/>
+    </linearGradient>
+  </defs>
+  <!-- Background badge -->
+  <rect x="4" y="4" width="40" height="40" rx="12" fill="url(#logo-grad)"/>
+  
+  <!-- Microphone body -->
+  <rect x="19" y="12" width="10" height="16" rx="5" fill="url(#inner-grad)"/>
+  
+  <!-- Microphone stand cradle -->
+  <path d="M14 22C14 27.52 18.48 32 24 32C29.52 32 34 27.52 34 22" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+  
+  <!-- Stem and base -->
+  <path d="M24 32V37" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M19 37H29" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+  
+  <!-- Soundwave sparkles / AI dots -->
+  <circle cx="10" cy="22" r="1.5" fill="#FFF9F0" opacity="0.9"/>
+  <circle cx="38" cy="22" r="1.5" fill="#FFF9F0" opacity="0.9"/>
+</svg>

@@ -1430,6 +1430,16 @@ function fillList(id, items) {
 
   ul.replaceChildren();
 
+  if (typeof items === "string") {
+    try {
+      const parsed = JSON.parse(items);
+      if (Array.isArray(parsed)) items = parsed;
+      else items = [items];
+    } catch {
+      items = items ? [items] : [];
+    }
+  }
+
   if (
     !items ||
     !Array.isArray(items) ||
@@ -1665,6 +1675,7 @@ async function loadPastList() {
         document.createElement(
           "button"
         );
+      btn.className = "past-item-btn";
 
       const title =
         document.createElement(
@@ -1716,6 +1727,36 @@ async function loadPastList() {
 
 
       li.appendChild(btn);
+
+      const delBtn =
+        document.createElement(
+          "button"
+        );
+      delBtn.className = "btn-del";
+      delBtn.title = "Delete interview";
+      delBtn.setAttribute("aria-label", "Delete interview");
+      delBtn.innerHTML = `
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
+      `;
+      delBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (!confirm("Are you sure you want to delete this interview record?")) return;
+        try {
+          const res = await fetch(`/api/interviews/${encodeURIComponent(item.id || item.interview_id)}`, {
+            method: "DELETE"
+          });
+          if (!res.ok) throw new Error("Could not delete interview.");
+          loadPastList();
+        } catch (err) {
+          showError(err.message || "Failed to delete interview.");
+        }
+      });
+      li.appendChild(delBtn);
 
       list.appendChild(li);
     }
