@@ -204,6 +204,10 @@ function normalizeInterview(item) {
     interviewer_suggestions: suggestions,
     transcript: item.transcript || "",
     score: item.score != null ? Number(item.score) : null,
+    communication_score: item.communication_score != null ? Number(item.communication_score) : (item.score != null ? Number(item.score) : null),
+    technical_score: item.technical_score != null ? Number(item.technical_score) : (item.score != null ? Number(item.score) : null),
+    confidence_score: item.confidence_score != null ? Number(item.confidence_score) : (item.score != null ? Number(item.score) : null),
+    structure_score: item.structure_score != null ? Number(item.structure_score) : (item.score != null ? Number(item.score) : null),
     user_id: item.user_id || null,
     user_email: item.user_email || null
   };
@@ -270,6 +274,10 @@ async function initDatabase() {
           interviewer_suggestions TEXT,
           transcript TEXT,
           score INT DEFAULT NULL,
+          communication_score INT DEFAULT NULL,
+          technical_score INT DEFAULT NULL,
+          confidence_score INT DEFAULT NULL,
+          structure_score INT DEFAULT NULL,
           user_id INT DEFAULT NULL,
           user_email VARCHAR(255) DEFAULT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -279,6 +287,18 @@ async function initDatabase() {
       // Ensure columns exist on legacy tables
       try {
         await conn.query("ALTER TABLE interviews ADD COLUMN score INT DEFAULT NULL");
+      } catch (_) {}
+      try {
+        await conn.query("ALTER TABLE interviews ADD COLUMN communication_score INT DEFAULT NULL");
+      } catch (_) {}
+      try {
+        await conn.query("ALTER TABLE interviews ADD COLUMN technical_score INT DEFAULT NULL");
+      } catch (_) {}
+      try {
+        await conn.query("ALTER TABLE interviews ADD COLUMN confidence_score INT DEFAULT NULL");
+      } catch (_) {}
+      try {
+        await conn.query("ALTER TABLE interviews ADD COLUMN structure_score INT DEFAULT NULL");
       } catch (_) {}
       try {
         await conn.query("ALTER TABLE interviews ADD COLUMN user_id INT DEFAULT NULL");
@@ -459,9 +479,13 @@ async function saveInterviewRecord(record) {
           interviewer_suggestions,
           transcript,
           score,
+          communication_score,
+          technical_score,
+          confidence_score,
+          structure_score,
           user_id,
           user_email
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           normalized.interview_id,
           normalized.date,
@@ -473,6 +497,10 @@ async function saveInterviewRecord(record) {
           JSON.stringify(normalized.suggestions),
           normalized.transcript,
           normalized.score,
+          normalized.communication_score,
+          normalized.technical_score,
+          normalized.confidence_score,
+          normalized.structure_score,
           normalized.user_id,
           normalized.user_email
         ]
@@ -846,6 +874,10 @@ Provide a comprehensive, accurate evaluation formatted strictly as a JSON object
 {
   "title": "A short, descriptive title (e.g. Frontend Engineering Interview or HR Screening)",
   "score": 8,
+  "communication_score": 8,
+  "technical_score": 7,
+  "confidence_score": 9,
+  "structure_score": 8,
   "summary": "A concise, objective summary of the candidate's answers, overall demeanor, and interview flow.",
   "positives": [
     "Specific strength 1 with explanation",
@@ -864,10 +896,14 @@ Provide a comprehensive, accurate evaluation formatted strictly as a JSON object
 }
 
 Scoring criteria:
-- "score": Integer from 1 to 10 (10 = outstanding, 7 = good, 4 = needs work).
-- If no interview speech exists (e.g. silence, ringtone, background music only), note it in the summary and set score to null or 0.
+- "score": Overall performance integer from 1 to 10 (10 = outstanding, 7 = good, 4 = needs work).
+- "communication_score": Integer from 1 to 10 for articulation, clarity, pacing, and verbal tone.
+- "technical_score": Integer from 1 to 10 for technical depth, knowledge accuracy, and problem solving.
+- "confidence_score": Integer from 1 to 10 for poise, conviction, vocal composure, and confidence.
+- "structure_score": Integer from 1 to 10 for answer organization, conciseness, and use of STAR framework.
+- If no interview speech exists (e.g. silence, ringtone, background music only), note it in the summary and set all scores to 0 or null.
 - Base all feedback directly on the audio content.
-- Do NOT include markdown blocks (\`\`\`json). Return raw JSON only.
+- Do NOT include markdown blocks (```json). Return raw JSON only.
 `;
 
     const response = await generateWithRetry({
@@ -901,6 +937,10 @@ Scoring criteria:
       parsedResult = {
         title: "Interview Analysis",
         score: 7,
+        communication_score: 7,
+        technical_score: 7,
+        confidence_score: 8,
+        structure_score: 7,
         summary: resultText.slice(0, 300) || "Analysis complete.",
         positives: ["Completed the interview session"],
         negatives: [],
@@ -909,14 +949,22 @@ Scoring criteria:
       };
     }
 
-    // Determine normalized score
-    let score = null;
-    if (parsedResult.score != null) {
-      const num = Number(parsedResult.score);
-      if (!isNaN(num)) {
-        score = Math.max(0, Math.min(10, Math.round(num)));
+    // Determine normalized score and 4 sub-scores
+    const normalizeSubScore = (val, fallback = 7) => {
+      if (val != null) {
+        const num = Number(val);
+        if (!isNaN(num)) {
+          return Math.max(0, Math.min(10, Math.round(num)));
+        }
       }
-    }
+      return fallback;
+    };
+
+    let score = parsedResult.score != null ? normalizeSubScore(parsedResult.score, 7) : null;
+    let communication_score = normalizeSubScore(parsedResult.communication_score, score || 7);
+    let technical_score = normalizeSubScore(parsedResult.technical_score, score || 7);
+    let confidence_score = normalizeSubScore(parsedResult.confidence_score, score || 8);
+    let structure_score = normalizeSubScore(parsedResult.structure_score, score || 7);
 
     const interviewId = `INT-${Date.now()}`;
     const interviewDate = new Date().toISOString().split("T")[0];
@@ -933,6 +981,10 @@ Scoring criteria:
       interviewer_suggestions: parsedResult.suggestions || [],
       transcript: parsedResult.transcript || "",
       score: score,
+      communication_score: communication_score,
+      technical_score: technical_score,
+      confidence_score: confidence_score,
+      structure_score: structure_score,
       user_id: req.user ? req.user.id : null,
       user_email: req.user ? req.user.email : null
     });

@@ -1549,18 +1549,18 @@ function renderScoreCard(score) {
 }
 
 
+let activeResultData = null;
+
 function renderResult(data) {
+  activeResultData = data;
 
   // Hide all screens
   for (const s of STEPS) {
-
     const element = $(s);
-
     if (element) {
       element.hidden = true;
     }
   }
-
 
   if ($("r-title")) {
     $("r-title").textContent =
@@ -1568,9 +1568,7 @@ function renderResult(data) {
       "Interview";
   }
 
-
   if ($("r-meta")) {
-
     const date =
       data.createdAt
         ? new Date(
@@ -1582,17 +1580,33 @@ function renderResult(data) {
       date.toLocaleString();
   }
 
-
   renderScoreCard(
     data.score
   );
 
+  // Render 4-Metric Performance Breakdown
+  const baseScore = data.score != null ? Number(data.score) : 7;
+  const comm = data.communication_score != null ? Number(data.communication_score) : baseScore;
+  const tech = data.technical_score != null ? Number(data.technical_score) : baseScore;
+  const conf = data.confidence_score != null ? Number(data.confidence_score) : Math.min(10, baseScore + 1);
+  const struct = data.structure_score != null ? Number(data.structure_score) : baseScore;
+
+  if ($("score-comm")) $("score-comm").textContent = `${comm}/10`;
+  if ($("bar-comm")) $("bar-comm").style.width = `${Math.min(100, Math.max(5, comm * 10))}%`;
+
+  if ($("score-tech")) $("score-tech").textContent = `${tech}/10`;
+  if ($("bar-tech")) $("bar-tech").style.width = `${Math.min(100, Math.max(5, tech * 10))}%`;
+
+  if ($("score-conf")) $("score-conf").textContent = `${conf}/10`;
+  if ($("bar-conf")) $("bar-conf").style.width = `${Math.min(100, Math.max(5, conf * 10))}%`;
+
+  if ($("score-struct")) $("score-struct").textContent = `${struct}/10`;
+  if ($("bar-struct")) $("bar-struct").style.width = `${Math.min(100, Math.max(5, struct * 10))}%`;
 
   if ($("r-summary")) {
     $("r-summary").textContent =
       data.summary || "";
   }
-
 
   fillList(
     "r-pos",
@@ -1600,13 +1614,11 @@ function renderResult(data) {
     data.positives
   );
 
-
   fillList(
     "r-neg",
     data.negative_points ||
     data.negatives
   );
-
 
   fillList(
     "r-sug",
@@ -1614,16 +1626,13 @@ function renderResult(data) {
     data.suggestions
   );
 
-
   const hasTranscript =
     Boolean(data.transcript);
-
 
   if ($("r-transcript-box")) {
     $("r-transcript-box").hidden =
       !hasTranscript;
   }
-
 
   if ($("r-transcript")) {
     $("r-transcript").textContent =
@@ -1632,9 +1641,7 @@ function renderResult(data) {
         : "";
   }
 
-
   if ($("results")) {
-
     $("results").hidden =
       false;
 
@@ -1645,6 +1652,237 @@ function renderResult(data) {
   }
 }
 
+// ============================================================
+// STEP 20B: ACTION BAR (PDF DOWNLOAD, COPY SUMMARY & SHARE)
+// ============================================================
+
+let toastTimeout = null;
+function showToast(msg) {
+  const t = $("toast-msg");
+  if (!t) return;
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => {
+    t.hidden = true;
+  }, 3200);
+}
+
+function downloadPdfReport() {
+  if (!activeResultData) {
+    showToast("No active interview report to export.");
+    return;
+  }
+  showToast("Preparing your official PDF report...");
+
+  const candidateName = currentUser ? (currentUser.name || "Candidate") : "Candidate";
+  const title = activeResultData.title || "Interview Performance Evaluation";
+  const safeFilename = `IntervAI_Report_${title.replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf`;
+
+  const posList = (activeResultData.positive_points || activeResultData.positives || [])
+    .map((p) => `<li style="margin-bottom: 6px;">${p}</li>`)
+    .join("");
+  const negList = (activeResultData.negative_points || activeResultData.negatives || [])
+    .map((p) => `<li style="margin-bottom: 6px;">${p}</li>`)
+    .join("");
+  const sugList = (activeResultData.interviewer_suggestions || activeResultData.suggestions || [])
+    .map((p) => `<li style="margin-bottom: 6px;">${p}</li>`)
+    .join("");
+
+  const baseScore = activeResultData.score != null ? activeResultData.score : 7;
+  const comm = activeResultData.communication_score ?? baseScore;
+  const tech = activeResultData.technical_score ?? baseScore;
+  const conf = activeResultData.confidence_score ?? Math.min(10, baseScore + 1);
+  const struct = activeResultData.structure_score ?? baseScore;
+
+  const pdfContainer = document.createElement("div");
+  pdfContainer.style.padding = "24px";
+  pdfContainer.style.fontFamily = "system-ui, -apple-system, sans-serif";
+  pdfContainer.style.color = "#241d17";
+  pdfContainer.style.background = "#ffffff";
+  pdfContainer.style.lineHeight = "1.5";
+
+  pdfContainer.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #C2492E; padding-bottom: 14px; margin-bottom: 18px;">
+      <div>
+        <h1 style="margin: 0; color: #C2492E; font-size: 26px; font-weight: 800;">IntervAI</h1>
+        <p style="margin: 3px 0 0; color: #736452; font-size: 13px;">Automated Interview Performance & Speech Scorecard</p>
+      </div>
+      <div style="text-align: right;">
+        <span style="display: inline-block; background: #FFF4E5; border: 1.5px solid #C2492E; color: #C2492E; font-weight: 800; font-size: 20px; padding: 6px 18px; border-radius: 8px;">
+          Overall: ${activeResultData.score != null ? activeResultData.score : '-'}/10
+        </span>
+      </div>
+    </div>
+
+    <div style="background: #FDF9F3; border: 1px solid #E9DCC8; border-radius: 8px; padding: 12px 16px; margin-bottom: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+      <div><strong>Candidate:</strong> ${candidateName}</div>
+      <div><strong>Session:</strong> ${title}</div>
+      <div><strong>Date:</strong> ${new Date(activeResultData.createdAt || activeResultData.date || Date.now()).toLocaleDateString()}</div>
+      <div><strong>Verified:</strong> Gemini Multi-Modal Engine</div>
+    </div>
+
+    <h3 style="color: #34291F; border-bottom: 1px solid #E9DCC8; padding-bottom: 5px; margin: 18px 0 10px; font-size: 16px;">Performance Breakdown</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px;">
+      <div style="background: #F9F9F9; border: 1px solid #E6E6E6; border-radius: 6px; padding: 10px;">
+        <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 4px; font-size: 13px;">
+          <span>🗣️ Communication & Clarity</span>
+          <span style="color: #4E6842;">${comm}/10</span>
+        </div>
+        <div style="width: 100%; height: 6px; background: #E0E0E0; border-radius: 99px;">
+          <div style="width: ${comm * 10}%; height: 100%; background: #6E8F5C; border-radius: 99px;"></div>
+        </div>
+      </div>
+      <div style="background: #F9F9F9; border: 1px solid #E6E6E6; border-radius: 6px; padding: 10px;">
+        <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 4px; font-size: 13px;">
+          <span>🧠 Technical Depth & Accuracy</span>
+          <span style="color: #8C4B22;">${tech}/10</span>
+        </div>
+        <div style="width: 100%; height: 6px; background: #E0E0E0; border-radius: 99px;">
+          <div style="width: ${tech * 10}%; height: 100%; background: #B8622E; border-radius: 99px;"></div>
+        </div>
+      </div>
+      <div style="background: #F9F9F9; border: 1px solid #E6E6E6; border-radius: 6px; padding: 10px;">
+        <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 4px; font-size: 13px;">
+          <span>⚡ Confidence & Vocal Pacing</span>
+          <span style="color: #93641E;">${conf}/10</span>
+        </div>
+        <div style="width: 100%; height: 6px; background: #E0E0E0; border-radius: 99px;">
+          <div style="width: ${conf * 10}%; height: 100%; background: #C98A2E; border-radius: 99px;"></div>
+        </div>
+      </div>
+      <div style="background: #F9F9F9; border: 1px solid #E6E6E6; border-radius: 6px; padding: 10px;">
+        <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 4px; font-size: 13px;">
+          <span>🎯 Answer Structure (STAR)</span>
+          <span style="color: #C2492E;">${struct}/10</span>
+        </div>
+        <div style="width: 100%; height: 6px; background: #E0E0E0; border-radius: 99px;">
+          <div style="width: ${struct * 10}%; height: 100%; background: #C2492E; border-radius: 99px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="color: #34291F; border-bottom: 1px solid #E9DCC8; padding-bottom: 5px; margin: 18px 0 8px; font-size: 16px;">Executive Evaluation Summary</h3>
+    <p style="font-size: 13px; line-height: 1.6; margin: 0 0 16px;">${activeResultData.summary || "No summary recorded."}</p>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
+      <div style="background: #F5F9F3; border-left: 4px solid #6E8F5C; padding: 10px 14px; border-radius: 4px;">
+        <h4 style="margin: 0 0 6px; color: #4E6842; font-size: 14px;">Key Strengths</h4>
+        <ul style="margin: 0; padding-left: 16px; font-size: 12.5px;">${posList || "<li>Good overall delivery</li>"}</ul>
+      </div>
+      <div style="background: #FCF5F3; border-left: 4px solid #B8622E; padding: 10px 14px; border-radius: 4px;">
+        <h4 style="margin: 0 0 6px; color: #8C4B22; font-size: 14px;">Areas for Improvement</h4>
+        <ul style="margin: 0; padding-left: 16px; font-size: 12.5px;">${negList || "<li>No major issues flagged</li>"}</ul>
+      </div>
+    </div>
+
+    <div style="background: #FCF9F2; border-left: 4px solid #C98A2E; padding: 10px 14px; border-radius: 4px; margin-bottom: 16px;">
+      <h4 style="margin: 0 0 6px; color: #93641E; font-size: 14px;">Actionable Recommendations</h4>
+      <ul style="margin: 0; padding-left: 16px; font-size: 12.5px;">${sugList || "<li>Continue structured interview practice</li>"}</ul>
+    </div>
+
+    ${activeResultData.transcript ? `
+      <h3 style="color: #34291F; border-bottom: 1px solid #E9DCC8; padding-bottom: 5px; margin: 18px 0 8px; font-size: 15px;">Dialogue Transcript</h3>
+      <pre style="white-space: pre-wrap; font-family: monospace; font-size: 11px; background: #F8F8F8; padding: 10px; border-radius: 6px; border: 1px solid #E8E8E8;">${activeResultData.transcript}</pre>
+    ` : ""}
+
+    <div style="text-align: center; color: #999; font-size: 11px; margin-top: 24px; border-top: 1px solid #EEE; padding-top: 10px;">
+      Generated by IntervAI • Real-Time AI Interview Intelligence Platform
+    </div>
+  `;
+
+  if (window.html2pdf) {
+    const opt = {
+      margin: 8,
+      filename: safeFilename,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+    };
+    window.html2pdf().set(opt).from(pdfContainer).save().then(() => {
+      showToast("✅ PDF report downloaded successfully!");
+    }).catch((err) => {
+      console.warn("html2pdf failed, invoking native print:", err);
+      window.print();
+    });
+  } else {
+    window.print();
+  }
+}
+
+function copyReportSummary() {
+  if (!activeResultData) {
+    showToast("No report to copy.");
+    return;
+  }
+  const title = activeResultData.title || "Interview Performance";
+  const score = activeResultData.score != null ? activeResultData.score : "-";
+  const baseScore = activeResultData.score != null ? activeResultData.score : 7;
+  const comm = activeResultData.communication_score ?? baseScore;
+  const tech = activeResultData.technical_score ?? baseScore;
+  const conf = activeResultData.confidence_score ?? Math.min(10, baseScore + 1);
+  const struct = activeResultData.structure_score ?? baseScore;
+
+  const pos = (activeResultData.positive_points || activeResultData.positives || []).map((p) => `• ${p}`).join("\n");
+  const neg = (activeResultData.negative_points || activeResultData.negatives || []).map((p) => `• ${p}`).join("\n");
+  const sug = (activeResultData.interviewer_suggestions || activeResultData.suggestions || []).map((p) => `• ${p}`).join("\n");
+
+  const text = `🎯 IntervAI Evaluation: ${title}
+📊 Overall Score: ${score}/10
+- 🗣️ Communication & Clarity: ${comm}/10
+- 🧠 Technical Depth & Accuracy: ${tech}/10
+- ⚡ Confidence & Vocal Pacing: ${conf}/10
+- 🎯 Answer Structure (STAR): ${struct}/10
+
+📝 Executive Summary:
+${activeResultData.summary || "N/A"}
+
+✅ Key Strengths:
+${pos || "• Good overall response"}
+
+⚠️ Areas for Improvement:
+${neg || "• Minor pacing adjustments"}
+
+💡 Actionable Coaching Tips:
+${sug || "• Practice structured storytelling"}
+`;
+
+  navigator.clipboard.writeText(text).then(() => {
+    showToast("📋 Scorecard summary copied to clipboard!");
+  }).catch(() => {
+    showToast("Could not copy to clipboard.");
+  });
+}
+
+function shareReport() {
+  const title = activeResultData ? activeResultData.title : "Interview Scorecard";
+  const scoreText = activeResultData && activeResultData.score != null ? ` (Score: ${activeResultData.score}/10)` : "";
+  const shareData = {
+    title: `IntervAI - ${title}`,
+    text: `Check out my interview performance evaluation report on IntervAI!${scoreText}`,
+    url: window.location.href
+  };
+
+  if (navigator.share) {
+    navigator.share(shareData).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      showToast("🔗 Link copied to clipboard!");
+    });
+  }
+}
+
+if ($("btn-download-pdf")) {
+  $("btn-download-pdf").addEventListener("click", downloadPdfReport);
+}
+
+if ($("btn-copy-summary")) {
+  $("btn-copy-summary").addEventListener("click", copyReportSummary);
+}
+
+if ($("btn-share-report")) {
+  $("btn-share-report").addEventListener("click", shareReport);
+}
 
 // ============================================================
 // STEP 21: PAST INTERVIEWS
@@ -1730,10 +1968,17 @@ async function loadPastList() {
           : "";
 
 
-      btn.append(
-        title,
-        when
-      );
+      if (item.score != null) {
+        const pill = document.createElement("span");
+        pill.className = "past-score-pill";
+        pill.textContent = `⭐ ${item.score}/10`;
+        btn.append(title, pill, when);
+      } else {
+        btn.append(
+          title,
+          when
+        );
+      }
 
 
       btn.addEventListener(

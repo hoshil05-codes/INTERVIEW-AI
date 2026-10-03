@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
   <div class="blob blob-a" aria-hidden="true"></div>
@@ -218,6 +219,61 @@
         </div>
       </header>
 
+      <!-- ACTION BAR: PDF, COPY & SHARE -->
+      <div class="results-actions">
+        <button id="btn-download-pdf" class="btn action-btn primary" type="button">
+          <span>📥</span> Download PDF Report
+        </button>
+        <button id="btn-copy-summary" class="btn action-btn" type="button">
+          <span>📋</span> Copy Summary
+        </button>
+        <button id="btn-share-report" class="btn action-btn" type="button">
+          <span>🔗</span> Share Report
+        </button>
+      </div>
+
+      <!-- 4-METRIC DETAILED SCORE BREAKDOWN -->
+      <section class="breakdown-section" aria-label="Performance Breakdown">
+        <h3 class="breakdown-heading">Performance Metric Breakdown</h3>
+        <div class="score-breakdown" id="score-breakdown">
+          <div class="breakdown-card">
+            <div class="breakdown-header">
+              <span class="breakdown-icon">🗣️</span>
+              <span class="breakdown-title">Communication &amp; Clarity</span>
+              <span class="breakdown-score" id="score-comm">–/10</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill fill-comm" id="bar-comm" style="width: 0%"></div></div>
+          </div>
+
+          <div class="breakdown-card">
+            <div class="breakdown-header">
+              <span class="breakdown-icon">🧠</span>
+              <span class="breakdown-title">Technical Depth &amp; Accuracy</span>
+              <span class="breakdown-score" id="score-tech">–/10</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill fill-tech" id="bar-tech" style="width: 0%"></div></div>
+          </div>
+
+          <div class="breakdown-card">
+            <div class="breakdown-header">
+              <span class="breakdown-icon">⚡</span>
+              <span class="breakdown-title">Confidence &amp; Speech Pacing</span>
+              <span class="breakdown-score" id="score-conf">–/10</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill fill-conf" id="bar-conf" style="width: 0%"></div></div>
+          </div>
+
+          <div class="breakdown-card">
+            <div class="breakdown-header">
+              <span class="breakdown-icon">🎯</span>
+              <span class="breakdown-title">Answer Structure (STAR)</span>
+              <span class="breakdown-score" id="score-struct">–/10</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill fill-struct" id="bar-struct" style="width: 0%"></div></div>
+          </div>
+        </div>
+      </section>
+
       <p id="r-summary" class="summary"></p>
 
       <div class="columns">
@@ -285,6 +341,9 @@
       </div>
     </div>
   </div>
+
+  <!-- FLOATING TOAST NOTIFICATION -->
+  <div id="toast-msg" class="toast-notification" hidden role="status" aria-live="polite"></div>
 
   <script src="app.js"></script>
 </body>

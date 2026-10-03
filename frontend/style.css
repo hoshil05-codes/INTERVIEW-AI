@@ -479,9 +479,20 @@ main { max-width: 46rem; margin: 0 auto; padding: 1.75rem 1.25rem 4rem; }
   cursor: pointer;
   transition: background 0.15s ease;
 }
-.past-list button.past-item-btn:hover,
-.past-list > li > button:not(.btn-del):hover { background: var(--panel-tint); }
 .past-list .when { color: var(--muted); white-space: nowrap; }
+.past-score-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: var(--panel-tint);
+  border: 1px solid var(--line);
+  color: var(--brick);
+  margin-left: 0.6rem;
+  white-space: nowrap;
+}
 .past-list .btn-del {
   display: inline-flex;
   align-items: center;
@@ -528,6 +539,157 @@ main { max-width: 46rem; margin: 0 auto; padding: 1.75rem 1.25rem 4rem; }
 }
 .score-num span { font-size: 1.6rem; font-weight: 600; }
 .score-num small { font-size: 0.8rem; color: var(--muted); margin-left: 1px; }
+
+/* ---------- Results Action Bar ---------- */
+.results-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 1.5rem 0 1.75rem;
+}
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.15rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1.5px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(52, 41, 31, 0.04);
+}
+.action-btn:hover {
+  border-color: var(--brick);
+  background: var(--panel-tint);
+  transform: translateY(-1px);
+}
+.action-btn.primary {
+  background: var(--brick);
+  border-color: var(--brick);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(194, 73, 46, 0.25);
+}
+.action-btn.primary:hover {
+  background: var(--brick-dark);
+  border-color: var(--brick-dark);
+}
+
+/* ---------- 4-Metric Score Breakdown Grid ---------- */
+.breakdown-section {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 1.35rem 1.4rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(52, 41, 31, 0.03);
+}
+.breakdown-heading {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.15rem;
+  margin: 0 0 1.1rem;
+  color: var(--ink);
+}
+.score-breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1.1rem;
+}
+.breakdown-card {
+  background: var(--panel-tint);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.breakdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.breakdown-icon {
+  font-size: 1.15rem;
+}
+.breakdown-title {
+  flex: 1;
+  color: var(--ink);
+  font-size: 0.86rem;
+}
+.breakdown-score {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--brick);
+}
+.progress-bar {
+  width: 100%;
+  height: 9px;
+  background: #E8DDCF;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.fill-comm { background: linear-gradient(90deg, #6E8F5C, #4E6842); }
+.fill-tech { background: linear-gradient(90deg, #B8622E, #8C4B22); }
+.fill-conf { background: linear-gradient(90deg, #C98A2E, #93641E); }
+.fill-struct { background: linear-gradient(90deg, #C2492E, #A03C24); }
+
+/* ---------- Floating Toast Notification ---------- */
+.toast-notification {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background: var(--ink);
+  color: #ffffff;
+  padding: 0.75rem 1.4rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  z-index: 2000;
+  animation: toastPop 0.25s ease;
+}
+@keyframes toastPop {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- Print & PDF Generation Styles ---------- */
+@media print {
+  .blob, .top, .back, .results-actions, #btn-results-new, #auth-modal, .toast-notification {
+    display: none !important;
+  }
+  body {
+    background: #ffffff !important;
+    color: #111111 !important;
+    padding: 0 !important;
+  }
+  main {
+    max-width: 100% !important;
+    padding: 0.5cm !important;
+  }
+  .results {
+    margin-top: 0 !important;
+  }
+  .col, .breakdown-card, .breakdown-section {
+    break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+  }
+}
 
 .columns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
 .col {
