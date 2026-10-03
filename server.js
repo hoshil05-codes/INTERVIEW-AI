@@ -1325,8 +1325,8 @@ app.use((err, req, res, next) => {
 async function startServer() {
   await initDatabase();
 
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📁 Uploads stored in: ${uploadsPath}`);
     console.log(`💾 Database status: ${isDbConnected ? "Connected to MySQL" : "Local Resilient Storage active"}`);
   });
