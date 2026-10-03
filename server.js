@@ -517,6 +517,17 @@ app.use((req, res, next) => {
   });
 });
 
+// Require Authentication Middleware (Bina login ke allow nahi karega)
+function requireAuth(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: "Authentication required. Please sign in to access this feature."
+    });
+  }
+  next();
+}
+
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, "frontend")));
 
@@ -669,8 +680,8 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// Audio Upload API
-app.post("/api/interview/upload", upload.single("audio"), (req, res) => {
+// Audio Upload API (Requires Login)
+app.post("/api/interview/upload", requireAuth, upload.single("audio"), (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -701,8 +712,8 @@ app.post("/api/interview/upload", upload.single("audio"), (req, res) => {
   }
 });
 
-// AI Interview Analysis API
-app.post("/api/interview/analyze", async (req, res) => {
+// AI Interview Analysis API (Requires Login)
+app.post("/api/interview/analyze", requireAuth, async (req, res) => {
   let audioPath = null;
   let targetFilename = req.body && req.body.filename;
 
@@ -909,11 +920,11 @@ Scoring criteria:
   }
 });
 
-// Get past interviews (filtered by user if authenticated)
-app.get("/api/interviews", async (req, res) => {
+// Get past interviews (Requires Login)
+app.get("/api/interviews", requireAuth, async (req, res) => {
   try {
-    const userId = req.user ? req.user.id : null;
-    const userEmail = req.user ? req.user.email : null;
+    const userId = req.user.id;
+    const userEmail = req.user.email;
     const list = await getAllInterviews(userId, userEmail);
     res.json(list);
   } catch (error) {
@@ -925,8 +936,8 @@ app.get("/api/interviews", async (req, res) => {
   }
 });
 
-// Get single interview by ID
-app.get("/api/interviews/:id", async (req, res) => {
+// Get single interview by ID (Requires Login)
+app.get("/api/interviews/:id", requireAuth, async (req, res) => {
   try {
     const item = await getInterviewById(req.params.id);
     if (!item) {
@@ -945,8 +956,8 @@ app.get("/api/interviews/:id", async (req, res) => {
   }
 });
 
-// Delete interview by ID
-app.delete("/api/interviews/:id", async (req, res) => {
+// Delete interview by ID (Requires Login)
+app.delete("/api/interviews/:id", requireAuth, async (req, res) => {
   try {
     const deleted = await deleteInterviewById(req.params.id);
     res.json({

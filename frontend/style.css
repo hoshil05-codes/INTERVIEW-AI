@@ -435,13 +435,34 @@ pre {
   color: var(--brick) !important;
 }
 
+/* Mandatory Auth Locking */
+body.auth-locked main {
+  filter: blur(10px);
+  pointer-events: none !important;
+  user-select: none !important;
+  opacity: 0.3;
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+body.auth-locked .top {
+  filter: blur(4px);
+  pointer-events: none !important;
+  user-select: none !important;
+  opacity: 0.45;
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+.auth-overlay.mandatory .auth-close {
+  display: none !important;
+}
+
 /* Modal Overlay */
 .auth-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(28, 20, 14, 0.55);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+  background: rgba(28, 20, 14, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   z-index: 1000;
   display: flex;
   align-items: center;

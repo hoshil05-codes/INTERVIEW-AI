@@ -120,6 +120,11 @@ const STEPS = [
 ];
 
 function goStep(id) {
+  if (!currentUser && id !== "screen-home") {
+    openAuthModal("login");
+    return;
+  }
+
   for (const s of STEPS) {
     const element = $(s);
 
@@ -132,6 +137,11 @@ function goStep(id) {
 }
 
 function showView(name) {
+  if (!currentUser) {
+    openAuthModal("login");
+    return;
+  }
+
   const isNew = name === "new";
 
   const viewNew = $("view-new");
@@ -1863,8 +1873,15 @@ function updateAuthUI() {
   const guestBox = $("auth-nav-guest");
   const userBox = $("auth-nav-user");
   const greeting = $("user-greeting");
+  const modal = $("auth-modal");
 
   if (currentUser) {
+    // Authenticated: Unlock the app
+    document.body.classList.remove("auth-locked");
+    if (modal) {
+      modal.classList.remove("mandatory");
+      modal.hidden = true;
+    }
     if (guestBox) guestBox.hidden = true;
     if (userBox) userBox.hidden = false;
     if (greeting) {
@@ -1872,6 +1889,12 @@ function updateAuthUI() {
       greeting.textContent = `👤 ${displayName}`;
     }
   } else {
+    // Unauthenticated: Lock the entire app behind Login!
+    document.body.classList.add("auth-locked");
+    if (modal) {
+      modal.classList.add("mandatory");
+      modal.hidden = false;
+    }
     if (guestBox) guestBox.hidden = false;
     if (userBox) userBox.hidden = true;
   }
@@ -1952,14 +1975,25 @@ function openAuthModal(mode = "login") {
   const modal = $("auth-modal");
   if (!modal) return;
   setAuthMode(mode);
+  if (!currentUser) {
+    document.body.classList.add("auth-locked");
+    modal.classList.add("mandatory");
+  } else {
+    modal.classList.remove("mandatory");
+  }
   modal.hidden = false;
   const emailInput = $("auth-input-email");
   if (emailInput) emailInput.focus();
 }
 
 function closeAuthModal() {
+  // Bina login ke modal band nahi ho sakta
+  if (!currentUser) return;
   const modal = $("auth-modal");
-  if (modal) modal.hidden = true;
+  if (modal) {
+    modal.classList.remove("mandatory");
+    modal.hidden = true;
+  }
 }
 
 function loginSuccess(token, user) {
@@ -1978,8 +2012,11 @@ function logoutUser(shouldReload = true) {
   localStorage.removeItem("intervai_token");
   localStorage.removeItem("intervai_user");
   updateAuthUI();
+  openAuthModal("login");
   if (shouldReload) {
-    loadPastList();
+    const list = $("past-list");
+    if (list) list.replaceChildren();
+    if ($("past-empty")) $("past-empty").hidden = false;
   }
 }
 
@@ -1999,6 +2036,8 @@ if ($("btn-close-auth")) {
 const authOverlay = $("auth-modal");
 if (authOverlay) {
   authOverlay.addEventListener("click", (e) => {
+    // If not logged in, clicking backdrop will NOT close modal
+    if (!currentUser) return;
     if (e.target === authOverlay) closeAuthModal();
   });
 }
