@@ -2149,6 +2149,7 @@ function updateAuthUI() {
     if (modal) {
       modal.classList.add("mandatory");
       modal.hidden = false;
+      showAuthPanel("welcome", false);
     }
     const badge = $("welcome-badge-text");
     if (badge) {
@@ -2156,6 +2157,69 @@ function updateAuthUI() {
     }
     if (guestBox) guestBox.hidden = false;
     if (userBox) userBox.hidden = true;
+  }
+}
+
+let isAuthTransitioning = false;
+
+function showAuthPanel(panelName, animated = true) {
+  const welcomePanel = $("auth-panel-welcome");
+  const formPanel = $("auth-panel-form");
+  if (!welcomePanel || !formPanel) return;
+
+  const currentPanel = !formPanel.hidden ? "form" : "welcome";
+  if (currentPanel === panelName && !isAuthTransitioning) return;
+  if (isAuthTransitioning) return;
+
+  if (!animated) {
+    if (panelName === "form") {
+      welcomePanel.hidden = true;
+      welcomePanel.classList.remove("slide-out-left", "slide-in-left", "slide-out-right", "slide-in-right");
+      formPanel.hidden = false;
+      formPanel.classList.remove("slide-out-left", "slide-in-left", "slide-out-right", "slide-in-right");
+      const emailInput = $("auth-input-email");
+      if (emailInput) emailInput.focus();
+    } else {
+      formPanel.hidden = true;
+      formPanel.classList.remove("slide-out-left", "slide-in-left", "slide-out-right", "slide-in-right");
+      welcomePanel.hidden = false;
+      welcomePanel.classList.remove("slide-out-left", "slide-in-left", "slide-out-right", "slide-in-right");
+    }
+    return;
+  }
+
+  isAuthTransitioning = true;
+  const duration = 250; // ms
+
+  if (panelName === "form") {
+    welcomePanel.classList.remove("slide-in-left", "slide-in-right", "slide-out-right");
+    welcomePanel.classList.add("slide-out-left");
+
+    setTimeout(() => {
+      welcomePanel.hidden = true;
+      welcomePanel.classList.remove("slide-out-left");
+
+      formPanel.hidden = false;
+      formPanel.classList.remove("slide-out-left", "slide-out-right", "slide-in-left");
+      formPanel.classList.add("slide-in-right");
+
+      const emailInput = $("auth-input-email");
+      if (emailInput) emailInput.focus();
+      isAuthTransitioning = false;
+    }, duration);
+  } else {
+    formPanel.classList.remove("slide-in-left", "slide-in-right", "slide-out-left");
+    formPanel.classList.add("slide-out-right");
+
+    setTimeout(() => {
+      formPanel.hidden = true;
+      formPanel.classList.remove("slide-out-right");
+
+      welcomePanel.hidden = false;
+      welcomePanel.classList.remove("slide-out-left", "slide-out-right", "slide-in-right");
+      welcomePanel.classList.add("slide-in-left");
+      isAuthTransitioning = false;
+    }, duration);
   }
 }
 
@@ -2230,7 +2294,7 @@ function setAuthMode(mode) {
   }
 }
 
-function openAuthModal(mode = "login") {
+function openAuthModal(mode = "login", directToForm = false) {
   const modal = $("auth-modal");
   if (!modal) return;
   setAuthMode(mode);
@@ -2241,8 +2305,12 @@ function openAuthModal(mode = "login") {
     modal.classList.remove("mandatory");
   }
   modal.hidden = false;
-  const emailInput = $("auth-input-email");
-  if (emailInput) emailInput.focus();
+
+  if (directToForm) {
+    showAuthPanel("form", false);
+  } else {
+    showAuthPanel("welcome", false);
+  }
 }
 
 function closeAuthModal() {
@@ -2290,6 +2358,18 @@ if ($("btn-logout")) {
 
 if ($("btn-close-auth")) {
   $("btn-close-auth").addEventListener("click", closeAuthModal);
+}
+
+if ($("btn-auth-explore")) {
+  $("btn-auth-explore").addEventListener("click", () => {
+    showAuthPanel("form", true);
+  });
+}
+
+if ($("btn-back-to-robo")) {
+  $("btn-back-to-robo").addEventListener("click", () => {
+    showAuthPanel("welcome", true);
+  });
 }
 
 const authOverlay = $("auth-modal");

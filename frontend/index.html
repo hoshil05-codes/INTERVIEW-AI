@@ -303,41 +303,120 @@
     <div class="auth-card" role="dialog" aria-modal="true" aria-labelledby="auth-title">
       <button id="btn-close-auth" class="auth-close" type="button" aria-label="Close modal">&times;</button>
       
-      <div class="auth-head">
-        <img src="logo.svg" alt="" class="auth-brand-logo">
-        <h2 id="auth-title">Sign In to IntervAI</h2>
-        <p id="auth-desc" class="muted">Access your personalized interview evaluations and records.</p>
+      <!-- VIEW 1: ANIMATED ROBO WELCOME ONBOARDING -->
+      <div id="auth-panel-welcome" class="auth-panel auth-panel-welcome">
+        <div class="robo-avatar-box">
+          <svg class="robo-svg" viewBox="0 0 160 160" width="130" height="130" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Antenna -->
+            <path d="M80 34V18" stroke="#8C7A66" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="80" cy="14" r="6" fill="#C2492E" class="antenna-ball"/>
+            <circle cx="80" cy="14" r="11" stroke="#C2492E" stroke-width="1.5" class="antenna-pulse"/>
+
+            <!-- Headphones / Ears -->
+            <rect x="26" y="52" width="10" height="26" rx="5" fill="#B8622E"/>
+            <rect x="124" y="52" width="10" height="26" rx="5" fill="#B8622E"/>
+
+            <!-- Robot Head -->
+            <rect x="36" y="32" width="88" height="66" rx="22" fill="#FFFFFF" stroke="#E9DCC8" stroke-width="3"/>
+            
+            <!-- Visor Screen -->
+            <rect x="46" y="44" width="68" height="42" rx="14" fill="#34291F"/>
+
+            <!-- Blinking Cyber Eyes -->
+            <g class="robo-eyes-wrap">
+              <ellipse cx="64" cy="62" rx="6" ry="7" fill="#6E8F5C" class="robo-eye eye-l"/>
+              <circle cx="66" cy="60" r="2.2" fill="#FFFFFF"/>
+              <ellipse cx="96" cy="62" rx="6" ry="7" fill="#6E8F5C" class="robo-eye eye-r"/>
+              <circle cx="98" cy="60" r="2.2" fill="#FFFFFF"/>
+            </g>
+
+            <!-- Friendly Smile -->
+            <path d="M72 74 Q80 80 88 74" stroke="#C98A2E" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+
+            <!-- Body Torso -->
+            <rect x="48" y="104" width="64" height="46" rx="16" fill="#FFF9F0" stroke="#E9DCC8" stroke-width="2.5"/>
+
+            <!-- Core Pulsing Light -->
+            <circle cx="80" cy="124" r="9" fill="#C2492E" class="core-light"/>
+            <circle cx="80" cy="124" r="3.5" fill="#FFFFFF"/>
+
+            <!-- Left Arm -->
+            <path d="M48 114 Q32 124 36 138" stroke="#8C7A66" stroke-width="5" stroke-linecap="round" fill="none"/>
+            <circle cx="36" cy="140" r="5" fill="#B8622E"/>
+
+            <!-- Right Waving Arm -->
+            <g class="robo-arm-wave">
+              <path d="M112 114 Q128 108 132 94" stroke="#8C7A66" stroke-width="5" stroke-linecap="round" fill="none"/>
+              <circle cx="132" cy="92" r="5.5" fill="#C2492E"/>
+              <path d="M140 86 Q144 82 142 78" stroke="#C98A2E" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.8"/>
+              <path d="M145 92 Q149 90 147 86" stroke="#C98A2E" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.8"/>
+            </g>
+          </svg>
+          <div class="robo-shadow"></div>
+        </div>
+
+        <div class="robo-badge">
+          <span>✨</span> Meet Your AI Interview Mentor
+        </div>
+
+        <h2 class="robo-welcome-title">Hello! 👋 Welcome to IntervAI</h2>
+        <p class="robo-welcome-desc">
+          Your intelligent AI interview coach. Practice real mock interviews, get instant rubric scoring, and level up your career.
+        </p>
+
+        <div class="robo-highlights">
+          <span class="robo-tag">🎙️ Real-Time Audio AI</span>
+          <span class="robo-tag">📊 4-Metric Scorecard</span>
+          <span class="robo-tag">📄 PDF Reports</span>
+        </div>
+
+        <button id="btn-auth-explore" class="btn primary big btn-explore" type="button">
+          🚀 Explore IntervAI &rarr;
+        </button>
+
+        <p class="robo-explore-note">Click Explore to sign in or create your account</p>
       </div>
 
-      <div class="auth-tabs" role="tablist">
-        <button id="tab-auth-login" class="auth-tab-btn active" type="button" role="tab" aria-selected="true">Sign In</button>
-        <button id="tab-auth-signup" class="auth-tab-btn" type="button" role="tab" aria-selected="false">Create Account</button>
-      </div>
+      <!-- VIEW 2: LOGIN & SIGNUP FORM -->
+      <div id="auth-panel-form" class="auth-panel auth-panel-form" hidden>
+        <button id="btn-back-to-robo" class="auth-back-btn" type="button">&larr; Back to Welcome</button>
 
-      <p id="auth-error" class="auth-error" role="alert" hidden></p>
-      <p id="auth-success" class="auth-success" role="status" hidden></p>
-
-      <form id="auth-form" class="auth-form">
-        <div id="auth-field-name" class="auth-field" hidden>
-          <label for="auth-input-name">Full Name</label>
-          <input type="text" id="auth-input-name" placeholder="e.g. Alex Morgan" autocomplete="name">
+        <div class="auth-head">
+          <img src="logo.svg" alt="" class="auth-brand-logo">
+          <h2 id="auth-title">Sign In to IntervAI</h2>
+          <p id="auth-desc" class="muted">Access your personalized interview evaluations and records.</p>
         </div>
 
-        <div class="auth-field">
-          <label for="auth-input-email">Email Address</label>
-          <input type="email" id="auth-input-email" placeholder="name@example.com" required autocomplete="email">
+        <div class="auth-tabs" role="tablist">
+          <button id="tab-auth-login" class="auth-tab-btn active" type="button" role="tab" aria-selected="true">Sign In</button>
+          <button id="tab-auth-signup" class="auth-tab-btn" type="button" role="tab" aria-selected="false">Create Account</button>
         </div>
 
-        <div class="auth-field">
-          <label for="auth-input-password">Password</label>
-          <input type="password" id="auth-input-password" placeholder="At least 6 characters" required autocomplete="current-password">
+        <p id="auth-error" class="auth-error" role="alert" hidden></p>
+        <p id="auth-success" class="auth-success" role="status" hidden></p>
+
+        <form id="auth-form" class="auth-form">
+          <div id="auth-field-name" class="auth-field" hidden>
+            <label for="auth-input-name">Full Name</label>
+            <input type="text" id="auth-input-name" placeholder="e.g. Alex Morgan" autocomplete="name">
+          </div>
+
+          <div class="auth-field">
+            <label for="auth-input-email">Email Address</label>
+            <input type="email" id="auth-input-email" placeholder="name@example.com" required autocomplete="email">
+          </div>
+
+          <div class="auth-field">
+            <label for="auth-input-password">Password</label>
+            <input type="password" id="auth-input-password" placeholder="At least 6 characters" required autocomplete="current-password">
+          </div>
+
+          <button type="submit" id="btn-auth-submit" class="btn primary big auth-submit">Sign In</button>
+        </form>
+
+        <div class="auth-footer">
+          <p class="muted" id="auth-footer-prompt">Don't have an account? <button type="button" id="btn-switch-signup" class="auth-switch-link">Sign up</button></p>
         </div>
-
-        <button type="submit" id="btn-auth-submit" class="btn primary big auth-submit">Sign In</button>
-      </form>
-
-      <div class="auth-footer">
-        <p class="muted" id="auth-footer-prompt">Don't have an account? <button type="button" id="btn-switch-signup" class="auth-switch-link">Sign up</button></p>
       </div>
     </div>
   </div>
