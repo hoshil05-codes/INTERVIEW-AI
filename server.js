@@ -39,9 +39,40 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY
 });
 
-const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
-// Only active and supported Gemini models in current Gemini API
-const FALLBACK_MODELS = [DEFAULT_MODEL, "gemini-3.5-flash"];
+const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+// Active and available Gemini models prioritized by availability & quota
+const FALLBACK_MODELS = [
+  DEFAULT_MODEL,
+  "gemini-3.5-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3.6-flash",
+  "gemini-3.7-flash",
+  "gemini-3.8-flash"
+];
+
+function getAudioMimeType(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  switch (ext) {
+    case ".webm":
+      return "audio/webm";
+    case ".mp3":
+    case ".mpeg":
+      return "audio/mp3";
+    case ".wav":
+      return "audio/wav";
+    case ".ogg":
+      return "audio/ogg";
+    case ".m4a":
+    case ".mp4":
+      return "audio/mp4";
+    case ".aac":
+      return "audio/aac";
+    case ".flac":
+      return "audio/flac";
+    default:
+      return "audio/webm";
+  }
+}
 
 async function generateWithRetry(request, retries = 4) {
   let lastError = null;
@@ -763,24 +794,47 @@ app.post("/api/interview/analyze", requireAuth, async (req, res) => {
 
     console.log("Analyzing audio with Gemini:", path.basename(audioPath));
 
-    // Upload audio to Gemini
-    let uploadedFile = await ai.files.upload({
-      file: audioPath
-    });
+    const stats = fs.statSync(audioPath);
+    const audioMime = getAudioMimeType(audioPath);
+    let audioPart = null;
 
-    console.log("Audio uploaded to Gemini Files API:", uploadedFile.name);
+    // Use fast, resilient inlineData for files under 20MB (prevents Google Files API WebM transcode failures)
+    if (stats.size < 20 * 1024 * 1024) {
+      console.log(`Processing audio as inlineData (${(stats.size / 1024).toFixed(1)} KB, ${audioMime})...`);
+      const base64Data = fs.readFileSync(audioPath).toString("base64");
+      audioPart = {
+        inlineData: {
+          mimeType: audioMime,
+          data: base64Data
+        }
+      };
+    } else {
+      console.log(`Large audio file (${(stats.size / 1024 / 1024).toFixed(1)} MB), uploading to Gemini Files API...`);
+      let uploadedFile = await ai.files.upload({
+        file: audioPath,
+        mimeType: audioMime
+      });
 
-    // Wait if state is PROCESSING
-    let attempts = 0;
-    while (uploadedFile.state === "PROCESSING" && attempts < 30) {
-      console.log("File is processing on Gemini, waiting 1s...");
-      await new Promise((r) => setTimeout(r, 1000));
-      uploadedFile = await ai.files.get({ name: uploadedFile.name });
-      attempts++;
-    }
+      console.log("Audio uploaded to Gemini Files API:", uploadedFile.name);
 
-    if (uploadedFile.state === "FAILED") {
-      throw new Error("Gemini audio processing failed.");
+      let attempts = 0;
+      while (uploadedFile.state === "PROCESSING" && attempts < 45) {
+        console.log("File is processing on Gemini, waiting 1s...");
+        await new Promise((r) => setTimeout(r, 1000));
+        uploadedFile = await ai.files.get({ name: uploadedFile.name });
+        attempts++;
+      }
+
+      if (uploadedFile.state === "FAILED") {
+        throw new Error("Gemini audio processing failed: " + (uploadedFile.error?.message || "File processing error"));
+      }
+
+      audioPart = {
+        fileData: {
+          fileUri: uploadedFile.uri,
+          mimeType: uploadedFile.mimeType || audioMime
+        }
+      };
     }
 
     // Prompt Gemini
@@ -819,12 +873,7 @@ Scoring criteria:
     const response = await generateWithRetry({
       contents: [
         { text: prompt },
-        {
-          fileData: {
-            fileUri: uploadedFile.uri,
-            mimeType: uploadedFile.mimeType
-          }
-        }
+        audioPart
       ]
     });
 

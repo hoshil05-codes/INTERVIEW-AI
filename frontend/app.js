@@ -209,6 +209,12 @@ if ($("btn-goto-mode")) {
   });
 }
 
+if ($("btn-hero-past")) {
+  $("btn-hero-past").addEventListener("click", () => {
+    showView("past");
+  });
+}
+
 if ($("mode-live")) {
   $("mode-live").addEventListener("click", () => {
     goStep("screen-record");
@@ -1887,6 +1893,10 @@ function updateAuthUI() {
     if (greeting) {
       const displayName = currentUser.name ? currentUser.name.split(" ")[0] : "User";
       greeting.textContent = `👤 ${displayName}`;
+      const badge = $("welcome-badge-text");
+      if (badge) {
+        badge.textContent = `👋 Welcome back, ${displayName}! Your AI Interview Coach is ready.`;
+      }
     }
   } else {
     // Unauthenticated: Lock the entire app behind Login!
@@ -1894,6 +1904,10 @@ function updateAuthUI() {
     if (modal) {
       modal.classList.add("mandatory");
       modal.hidden = false;
+    }
+    const badge = $("welcome-badge-text");
+    if (badge) {
+      badge.textContent = "AI-Powered Interview Coach & Performance Analytics";
     }
     if (guestBox) guestBox.hidden = false;
     if (userBox) userBox.hidden = true;
