@@ -209,7 +209,9 @@ function normalizeInterview(item) {
     confidence_score: item.confidence_score != null ? Number(item.confidence_score) : (item.score != null ? Number(item.score) : null),
     structure_score: item.structure_score != null ? Number(item.structure_score) : (item.score != null ? Number(item.score) : null),
     user_id: item.user_id || null,
-    user_email: item.user_email || null
+    user_email: item.user_email || null,
+    practice_role: item.practice_role || null,
+    practice_question: item.practice_question || null
   };
 }
 
@@ -308,6 +310,12 @@ async function initDatabase() {
       } catch (_) {}
       try {
         await conn.query("ALTER TABLE interviews ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+      } catch (_) {}
+      try {
+        await conn.query("ALTER TABLE interviews ADD COLUMN practice_role VARCHAR(255) DEFAULT NULL");
+      } catch (_) {}
+      try {
+        await conn.query("ALTER TABLE interviews ADD COLUMN practice_question TEXT DEFAULT NULL");
       } catch (_) {}
 
       conn.release();
@@ -484,8 +492,10 @@ async function saveInterviewRecord(record) {
           confidence_score,
           structure_score,
           user_id,
-          user_email
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          user_email,
+          practice_role,
+          practice_question
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           normalized.interview_id,
           normalized.date,
@@ -502,7 +512,9 @@ async function saveInterviewRecord(record) {
           normalized.confidence_score,
           normalized.structure_score,
           normalized.user_id,
-          normalized.user_email
+          normalized.user_email,
+          normalized.practice_role,
+          normalized.practice_question
         ]
       );
       normalized.id = res.insertId || normalized.interview_id;
@@ -865,10 +877,27 @@ app.post("/api/interview/analyze", requireAuth, async (req, res) => {
       };
     }
 
+    const practiceRole = req.body && req.body.practiceRole ? String(req.body.practiceRole).trim() : null;
+    const practiceQuestion = req.body && req.body.practiceQuestion ? String(req.body.practiceQuestion).trim() : null;
+
+    let practicePromptContext = "";
+    if (practiceRole || practiceQuestion) {
+      practicePromptContext = `
+INTERVIEW PRACTICE CONTEXT:
+- Target Job Role: ${practiceRole || "General Candidate"}
+- Practice Question Candidate Answered: "${practiceQuestion || "General Answer"}"
+Special Focus:
+1. Assess how directly and completely the candidate answered this specific question.
+2. Evaluate domain proficiency and depth expected for a ${practiceRole || "candidate in this role"}.
+3. Evaluate structure using STAR framework (Situation, Task, Action, Result).
+`;
+    }
+
     // Prompt Gemini
     const prompt = `
 You are an expert, constructive AI Interview Evaluator and Career Coach.
 Carefully listen to and analyze this interview audio recording.
+${practicePromptContext}
 
 Provide a comprehensive, accurate evaluation formatted strictly as a JSON object with exactly these fields:
 {
@@ -986,7 +1015,9 @@ Scoring criteria:
       confidence_score: confidence_score,
       structure_score: structure_score,
       user_id: req.user ? req.user.id : null,
-      user_email: req.user ? req.user.email : null
+      user_email: req.user ? req.user.email : null,
+      practice_role: practiceRole,
+      practice_question: practiceQuestion
     });
 
     console.log("✅ Interview analysis saved:", savedRecord.interview_id);

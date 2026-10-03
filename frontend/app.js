@@ -112,6 +112,7 @@ function extensionFor(mime) {
 
 const STEPS = [
   "screen-home",
+  "screen-practice",
   "screen-mode",
   "screen-record",
   "screen-upload",
@@ -119,10 +120,303 @@ const STEPS = [
   "screen-loading"
 ];
 
+// ============================================================
+// AI MOCK INTERVIEW PRACTICE STUDIO DATA & LOGIC
+// ============================================================
+
+const PRACTICE_QUESTIONS = {
+  fullstack: {
+    name: "Software Engineer / Full Stack",
+    icon: "💻",
+    questions: [
+      {
+        q: "Tell me about a challenging bug or technical problem you solved. Walk me through your debugging approach and the resolution.",
+        track: "Behavioral & Culture (STAR)"
+      },
+      {
+        q: "How do you design a scalable RESTful API or microservice? How do you handle error handling, rate limiting, and database transactions?",
+        track: "Technical Depth & Concepts"
+      },
+      {
+        q: "Describe a situation where a production service went down or experienced severe latency. What steps did you take to mitigate and resolve it?",
+        track: "Situational & Real Scenarios"
+      },
+      {
+        q: "Can you explain how database indexing works, when an index might degrade performance, and how you optimize slow SQL queries?",
+        track: "Technical Depth & Concepts"
+      },
+      {
+        q: "How do you handle disagreement with a senior engineer or product manager about architectural choices or technical trade-offs?",
+        track: "Behavioral & Culture (STAR)"
+      }
+    ]
+  },
+  frontend: {
+    name: "Frontend Engineer",
+    icon: "🎨",
+    questions: [
+      {
+        q: "How do you optimize the rendering performance of a large, interactive web application? What metrics (Core Web Vitals) do you monitor?",
+        track: "Technical Depth & Concepts"
+      },
+      {
+        q: "Explain how React's Virtual DOM and Reconciliation algorithm work. When should you use useMemo, useCallback, or pure components?",
+        track: "Technical Depth & Concepts"
+      },
+      {
+        q: "Describe a project where you had to balance building beautiful pixel-perfect UI with strict accessibility (WCAG) and responsive mobile design.",
+        track: "Behavioral & Culture (STAR)"
+      },
+      {
+        q: "How do you manage complex asynchronous client-side state across a multi-step user journey, and how do you prevent race conditions?",
+        track: "Technical Depth & Concepts"
+      },
+      {
+        q: "Tell me about a time you had to deliver a frontend feature under a tight deadline with changing design requirements. What trade-offs did you make?",
+        track: "Situational & Real Scenarios"
+      }
+    ]
+  },
+  datascience: {
+    name: "Data Scientist & AI",
+    icon: "📊",
+    questions: [
+      {
+        q: "Explain the difference between overfitting and underfitting. What techniques (regularization, cross-validation) do you use to diagnose and fix them?",
+        track: "Technical Depth & Concepts"
+      },
+      {
+        q: "Walk me through an end-to-end Machine Learning pipeline you built, from raw data cleaning and feature engineering to model deployment and monitoring.",
+        track: "Behavioral & Culture (STAR)"
+      },
+      {
+        q: "How do you choose between Precision, Recall, and F1-score when evaluating an imbalanced classification dataset (e.g. fraud detection)?",
+        track: "Technical Depth & Concepts"
+      },
+      {
+        q: "Tell me about a time when business stakeholders misunderstood your model's predictions. How did you explain the findings and guide their decision?",
+        track: "Situational & Real Scenarios"
+      },
+      {
+        q: "How do modern Large Language Models (LLMs) differ from traditional NLP models, and how do you approach Prompt Engineering vs Fine-Tuning vs RAG?",
+        track: "Technical Depth & Concepts"
+      }
+    ]
+  },
+  product: {
+    name: "Product Manager",
+    icon: "💼",
+    questions: [
+      {
+        q: "How would you design an onboarding experience for a new mobile banking app? Walk me through user personas, key pain points, and core metrics.",
+        track: "Situational & Real Scenarios"
+      },
+      {
+        q: "Describe a time you had to prioritize one critical feature over another when engineering resources were limited. What framework did you use?",
+        track: "Behavioral & Culture (STAR)"
+      },
+      {
+        q: "If daily active users (DAU) for our core product dropped by 15% week-over-week, what step-by-step investigation would you run to find the root cause?",
+        track: "Technical Depth & Concepts"
+      },
+      {
+        q: "Tell me about a product feature that failed or did not meet user adoption expectations. What did you learn and how did you pivot?",
+        track: "Behavioral & Culture (STAR)"
+      },
+      {
+        q: "How do you manage relationships and communicate trade-offs between vocal sales leaders, impatient engineers, and corporate executives?",
+        track: "Behavioral & Culture (STAR)"
+      }
+    ]
+  },
+  behavioral: {
+    name: "HR & Behavioral Round",
+    icon: "👥",
+    questions: [
+      {
+        q: "Tell me about yourself, your proudest career achievements so far, and why you are excited about taking the next step in this role.",
+        track: "Behavioral & Culture (STAR)"
+      },
+      {
+        q: "Describe a situation where you had a significant conflict or misunderstanding with a colleague. How did you handle it and what was the resolution?",
+        track: "Behavioral & Culture (STAR)"
+      },
+      {
+        q: "Tell me about a time you took initiative on a project outside your defined job responsibilities. What was the impact?",
+        track: "Behavioral & Culture (STAR)"
+      },
+      {
+        q: "Tell me about a major mistake or failure in your career. What happened, how did you take accountability, and what did you learn?",
+        track: "Behavioral & Culture (STAR)"
+      },
+      {
+        q: "Where do you see yourself in 3 to 5 years, and how does this position align with your long-term personal and professional development?",
+        track: "Behavioral & Culture (STAR)"
+      }
+    ]
+  },
+  backend: {
+    name: "Backend & DevOps",
+    icon: "⚡",
+    questions: [
+      {
+        q: "How would you architect a backend service to handle 100,000 requests per minute with low latency? Explain database caching, message queues, and load balancing.",
+        track: "Technical Depth & Concepts"
+      },
+      {
+        q: "Describe a time when you migrated a live database schema or legacy service with zero downtime. How did you plan rollback strategies?",
+        track: "Behavioral & Culture (STAR)"
+      },
+      {
+        q: "Explain ACID properties and how distributed consensus algorithms (like Raft/Paxos) or eventual consistency work in distributed databases.",
+        track: "Technical Depth & Concepts"
+      },
+      {
+        q: "How do you set up CI/CD automation and containerized deployments (Docker/Kubernetes) to ensure high reliability and fast recovery from bad deploys?",
+        track: "Technical Depth & Concepts"
+      },
+      {
+        q: "Tell me about an unexpected security vulnerability or data leak scenario you identified. What actions did you take to patch and secure the system?",
+        track: "Situational & Real Scenarios"
+      }
+    ]
+  }
+};
+
+let currentPracticeRoleKey = "fullstack";
+let currentPracticeRole = "Software Engineer / Full Stack";
+let currentPracticeTrack = "Behavioral & Culture (STAR)";
+let currentPracticeQuestions = [];
+let currentPracticeQuestionIndex = 0;
+let currentPracticeQuestion = "";
+let isPracticeMode = false;
+let isSpeaking = false;
+
+function getFilteredPracticeQuestions() {
+  const roleData = PRACTICE_QUESTIONS[currentPracticeRoleKey] || PRACTICE_QUESTIONS.fullstack;
+  if (!roleData || !roleData.questions) return [];
+  const filtered = roleData.questions.filter((item) => item.track === currentPracticeTrack);
+  return filtered.length > 0 ? filtered : roleData.questions;
+}
+
+function renderPracticeQuestions() {
+  const listEl = $("practice-questions-list");
+  if (!listEl) return;
+  listEl.replaceChildren();
+
+  currentPracticeQuestions = getFilteredPracticeQuestions();
+  if (currentPracticeQuestionIndex >= currentPracticeQuestions.length) {
+    currentPracticeQuestionIndex = 0;
+  }
+
+  currentPracticeQuestions.forEach((item, idx) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `question-item ${idx === currentPracticeQuestionIndex ? "active" : ""}`;
+    btn.innerHTML = `<span style="font-weight:800;color:var(--brick);margin-right:0.35rem;">Q${idx + 1}.</span> <span>${item.q}</span>`;
+    btn.addEventListener("click", () => {
+      currentPracticeQuestionIndex = idx;
+      currentPracticeQuestion = item.q;
+      const customInput = $("practice-custom-question");
+      if (customInput) customInput.value = "";
+      renderPracticeQuestions();
+    });
+    listEl.appendChild(btn);
+  });
+
+  const customInput = $("practice-custom-question");
+  if (customInput && customInput.value.trim()) {
+    currentPracticeQuestion = customInput.value.trim();
+  } else if (currentPracticeQuestions[currentPracticeQuestionIndex]) {
+    currentPracticeQuestion = currentPracticeQuestions[currentPracticeQuestionIndex].q;
+  }
+}
+
+function updatePrompterUI() {
+  const roleTag = $("prompter-role-tag");
+  const trackTag = $("prompter-track-tag");
+  const countTag = $("prompter-q-count");
+  const textTag = $("prompter-q-text");
+
+  const roleData = PRACTICE_QUESTIONS[currentPracticeRoleKey] || PRACTICE_QUESTIONS.fullstack;
+  if (roleTag) roleTag.textContent = `${roleData.icon} ${roleData.name}`;
+  if (trackTag) trackTag.textContent = currentPracticeTrack;
+  if (countTag) {
+    countTag.textContent = `Question ${currentPracticeQuestionIndex + 1} of ${currentPracticeQuestions.length || 1}`;
+  }
+  if (textTag) {
+    textTag.textContent = currentPracticeQuestion || "Tell me about yourself and your professional experience.";
+  }
+}
+
+function speakCurrentQuestion() {
+  if (!("speechSynthesis" in window)) {
+    showError("Text-to-speech is not supported in this browser.");
+    return;
+  }
+
+  const speakBtn = $("btn-prompter-speak");
+
+  if (window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+    isSpeaking = false;
+    if (speakBtn) speakBtn.innerHTML = "<span>🔊</span> Listen Question";
+    return;
+  }
+
+  if (!currentPracticeQuestion) return;
+
+  const utter = new SpeechSynthesisUtterance(currentPracticeQuestion);
+  utter.rate = 0.95;
+  utter.pitch = 1.0;
+  utter.lang = "en-US";
+
+  const voices = window.speechSynthesis.getVoices();
+  const naturalVoice = voices.find((v) => v.lang.startsWith("en") && (v.name.includes("Google") || v.name.includes("Natural") || v.name.includes("Samantha")));
+  if (naturalVoice) utter.voice = naturalVoice;
+
+  utter.onstart = () => {
+    isSpeaking = true;
+    if (speakBtn) speakBtn.innerHTML = "<span>⏹️</span> Stop Audio";
+  };
+
+  utter.onend = () => {
+    isSpeaking = false;
+    if (speakBtn) speakBtn.innerHTML = "<span>🔊</span> Listen Question";
+  };
+
+  utter.onerror = () => {
+    isSpeaking = false;
+    if (speakBtn) speakBtn.innerHTML = "<span>🔊</span> Listen Question";
+  };
+
+  window.speechSynthesis.speak(utter);
+}
+
+function stopCurrentSpeech() {
+  if ("speechSynthesis" in window && window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+  }
+  isSpeaking = false;
+  const speakBtn = $("btn-prompter-speak");
+  if (speakBtn) speakBtn.innerHTML = "<span>🔊</span> Listen Question";
+}
+
 function goStep(id) {
   if (!currentUser && id !== "screen-home") {
     openAuthModal("login");
     return;
+  }
+
+  // Handle Practice Prompter visibility on screen-record
+  if (id === "screen-record") {
+    const prompter = $("practice-prompter");
+    if (prompter) {
+      prompter.hidden = !isPracticeMode;
+      if (isPracticeMode) {
+        updatePrompterUI();
+      }
+    }
   }
 
   for (const s of STEPS) {
@@ -203,8 +497,16 @@ if ($("brand-home")) {
 // STEP 4: HOME AND MODE BUTTONS
 // ============================================================
 
+if ($("btn-goto-practice")) {
+  $("btn-goto-practice").addEventListener("click", () => {
+    renderPracticeQuestions();
+    goStep("screen-practice");
+  });
+}
+
 if ($("btn-goto-mode")) {
   $("btn-goto-mode").addEventListener("click", () => {
+    isPracticeMode = false;
     goStep("screen-mode");
   });
 }
@@ -215,8 +517,16 @@ if ($("btn-hero-past")) {
   });
 }
 
+if ($("mode-practice")) {
+  $("mode-practice").addEventListener("click", () => {
+    renderPracticeQuestions();
+    goStep("screen-practice");
+  });
+}
+
 if ($("mode-live")) {
   $("mode-live").addEventListener("click", () => {
+    isPracticeMode = false;
     goStep("screen-record");
     loadMics();
   });
@@ -224,13 +534,151 @@ if ($("mode-live")) {
 
 if ($("mode-upload")) {
   $("mode-upload").addEventListener("click", () => {
+    isPracticeMode = false;
     goStep("screen-upload");
+  });
+}
+
+// Practice Studio Role Card selection
+const roleGrid = $("practice-role-grid");
+if (roleGrid) {
+  roleGrid.addEventListener("click", (e) => {
+    const card = e.target.closest(".role-card");
+    if (!card) return;
+    for (const c of roleGrid.querySelectorAll(".role-card")) c.classList.remove("active");
+    card.classList.add("active");
+    currentPracticeRoleKey = card.dataset.role || "fullstack";
+    currentPracticeRole = card.dataset.name || card.dataset.role;
+    currentPracticeQuestionIndex = 0;
+    renderPracticeQuestions();
+  });
+}
+
+// Practice Studio Track Pills selection
+const trackPills = $("practice-track-pills");
+if (trackPills) {
+  trackPills.addEventListener("click", (e) => {
+    const pill = e.target.closest(".track-pill");
+    if (!pill) return;
+    for (const p of trackPills.querySelectorAll(".track-pill")) p.classList.remove("active");
+    pill.classList.add("active");
+    currentPracticeTrack = pill.dataset.track || pill.textContent;
+    currentPracticeQuestionIndex = 0;
+    renderPracticeQuestions();
+  });
+}
+
+// Custom question input listener
+const customQuestionInput = $("practice-custom-question");
+if (customQuestionInput) {
+  customQuestionInput.addEventListener("input", (e) => {
+    const val = e.target.value.trim();
+    if (val) {
+      currentPracticeQuestion = val;
+      const listEl = $("practice-questions-list");
+      if (listEl) {
+        for (const item of listEl.querySelectorAll(".question-item")) item.classList.remove("active");
+      }
+    } else {
+      if (currentPracticeQuestions[currentPracticeQuestionIndex]) {
+        currentPracticeQuestion = currentPracticeQuestions[currentPracticeQuestionIndex].q;
+      }
+      renderPracticeQuestions();
+    }
+  });
+}
+
+// Shuffle questions button in studio
+if ($("btn-shuffle-questions")) {
+  $("btn-shuffle-questions").addEventListener("click", () => {
+    if (currentPracticeQuestions.length > 1) {
+      let nextIdx = currentPracticeQuestionIndex;
+      while (nextIdx === currentPracticeQuestionIndex) {
+        nextIdx = Math.floor(Math.random() * currentPracticeQuestions.length);
+      }
+      currentPracticeQuestionIndex = nextIdx;
+      currentPracticeQuestion = currentPracticeQuestions[currentPracticeQuestionIndex].q;
+      const customInput = $("practice-custom-question");
+      if (customInput) customInput.value = "";
+      renderPracticeQuestions();
+    }
+  });
+}
+
+// Launch Practice Studio button
+if ($("btn-launch-practice")) {
+  $("btn-launch-practice").addEventListener("click", () => {
+    isPracticeMode = true;
+    const customInput = $("practice-custom-question");
+    if (customInput && customInput.value.trim()) {
+      currentPracticeQuestion = customInput.value.trim();
+    } else if (currentPracticeQuestions[currentPracticeQuestionIndex]) {
+      currentPracticeQuestion = currentPracticeQuestions[currentPracticeQuestionIndex].q;
+    }
+    goStep("screen-record");
+    updatePrompterUI();
+    loadMics();
+  });
+}
+
+// Prompter Actions in Recording Screen
+if ($("btn-prompter-speak")) {
+  $("btn-prompter-speak").addEventListener("click", speakCurrentQuestion);
+}
+
+if ($("btn-prompter-next")) {
+  $("btn-prompter-next").addEventListener("click", () => {
+    stopCurrentSpeech();
+    if (currentPracticeQuestions.length > 0) {
+      currentPracticeQuestionIndex = (currentPracticeQuestionIndex + 1) % currentPracticeQuestions.length;
+      currentPracticeQuestion = currentPracticeQuestions[currentPracticeQuestionIndex].q;
+      updatePrompterUI();
+    }
+  });
+}
+
+if ($("btn-prompter-prev")) {
+  $("btn-prompter-prev").addEventListener("click", () => {
+    stopCurrentSpeech();
+    if (currentPracticeQuestions.length > 0) {
+      currentPracticeQuestionIndex = (currentPracticeQuestionIndex - 1 + currentPracticeQuestions.length) % currentPracticeQuestions.length;
+      currentPracticeQuestion = currentPracticeQuestions[currentPracticeQuestionIndex].q;
+      updatePrompterUI();
+    }
+  });
+}
+
+if ($("btn-prompter-shuffle")) {
+  $("btn-prompter-shuffle").addEventListener("click", () => {
+    stopCurrentSpeech();
+    if (currentPracticeQuestions.length > 1) {
+      let nextIdx = currentPracticeQuestionIndex;
+      while (nextIdx === currentPracticeQuestionIndex) {
+        nextIdx = Math.floor(Math.random() * currentPracticeQuestions.length);
+      }
+      currentPracticeQuestionIndex = nextIdx;
+      currentPracticeQuestion = currentPracticeQuestions[currentPracticeQuestionIndex].q;
+      updatePrompterUI();
+    }
+  });
+}
+
+// Toggle STAR Guide drawer
+if ($("btn-toggle-star-guide")) {
+  $("btn-toggle-star-guide").addEventListener("click", () => {
+    const drawer = $("prompter-star-guide");
+    const chevron = $("star-guide-chevron");
+    if (drawer) {
+      drawer.hidden = !drawer.hidden;
+      if (chevron) chevron.textContent = drawer.hidden ? "▾" : "▴";
+    }
   });
 }
 
 for (const btn of document.querySelectorAll(".back")) {
   if (btn.dataset.back) {
     btn.addEventListener("click", () => {
+      stopCurrentSpeech();
       goStep(btn.dataset.back);
     });
   }
@@ -238,6 +686,7 @@ for (const btn of document.querySelectorAll(".back")) {
 
 if ($("btn-results-new")) {
   $("btn-results-new").addEventListener("click", () => {
+    stopCurrentSpeech();
     showView("new");
   });
 }
@@ -1048,6 +1497,19 @@ function showReview(blob) {
 
   goStep("screen-review");
 
+  // Show practice context in review screen
+  const reviewContext = $("review-practice-context");
+  if (reviewContext) {
+    if (isPracticeMode && currentPracticeQuestion) {
+      if ($("review-practice-role")) $("review-practice-role").textContent = currentPracticeRole;
+      if ($("review-practice-track")) $("review-practice-track").textContent = currentPracticeTrack;
+      if ($("review-practice-question")) $("review-practice-question").textContent = `“${currentPracticeQuestion}”`;
+      reviewContext.hidden = false;
+    } else {
+      reviewContext.hidden = true;
+    }
+  }
+
   if ($("results")) {
     $("results").hidden = true;
   }
@@ -1357,7 +1819,10 @@ async function analyze() {
             filename:
               uploadData.file
                 ? uploadData.file.filename
-                : null
+                : null,
+            practiceRole: isPracticeMode ? currentPracticeRole : null,
+            practiceCategory: isPracticeMode ? currentPracticeTrack : null,
+            practiceQuestion: isPracticeMode ? currentPracticeQuestion : null
           })
         }
       );
@@ -1578,6 +2043,18 @@ function renderResult(data) {
 
     $("r-meta").textContent =
       date.toLocaleString();
+  }
+
+  // Populate Practice Result Banner
+  const practiceBanner = $("r-practice-banner");
+  if (practiceBanner) {
+    if (data.practice_role || data.practice_question) {
+      if ($("r-practice-role")) $("r-practice-role").textContent = data.practice_role || "Practice Session";
+      if ($("r-practice-question")) $("r-practice-question").textContent = data.practice_question ? `“${data.practice_question}”` : "";
+      practiceBanner.hidden = false;
+    } else {
+      practiceBanner.hidden = true;
+    }
   }
 
   renderScoreCard(

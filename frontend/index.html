@@ -45,7 +45,8 @@
         <p class="hero-sub">Practice live mock interviews or upload any recorded conversation. IntervAI's multi-modal AI evaluates clarity, breaks down strengths & blind spots, and delivers actionable coaching feedback in seconds.</p>
 
         <div class="hero-actions">
-          <button id="btn-goto-mode" class="btn primary big">🚀 Start New Interview</button>
+          <button id="btn-goto-practice" class="btn primary big">🎯 Start AI Mock Practice</button>
+          <button id="btn-goto-mode" class="btn big secondary">🎙️ Freeform / Video Call</button>
           <button id="btn-hero-past" class="btn big secondary" type="button">📋 Past Interviews</button>
         </div>
 
@@ -70,19 +71,19 @@
         <!-- 3 FEATURE PILLARS -->
         <div class="features-grid">
           <div class="feature-card">
+            <div class="feature-icon">🎯</div>
+            <h3 class="feature-title">Role-Based Mock Practice</h3>
+            <p class="feature-desc">Target real questions for Software Eng, Frontend, Data Science, PM, and HR with interactive AI audio prompter.</p>
+          </div>
+          <div class="feature-card">
             <div class="feature-icon">🎙️</div>
             <h3 class="feature-title">Live &amp; Call Recording</h3>
             <p class="feature-desc">Record smoothly with high-fidelity mic input, or capture both sides of Google Meet, Zoom, and Teams video calls.</p>
           </div>
           <div class="feature-card">
-            <div class="feature-icon">⚡</div>
-            <h3 class="feature-title">Multimodal Audio Intelligence</h3>
-            <p class="feature-desc">Analyzes speaking pace, answer depth, confidence levels, and technical structure directly from your audio.</p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">🎯</div>
+            <div class="feature-icon">📊</div>
             <h3 class="feature-title">Actionable STAR Coaching</h3>
-            <p class="feature-desc">Receive crystal-clear positive highlights, constructive areas to improve, and complete speaker-separated transcripts.</p>
+            <p class="feature-desc">Receive 4-metric rubric scoring (Communication, Technical, Confidence, Structure) and official PDF reports.</p>
           </div>
         </div>
 
@@ -92,35 +93,119 @@
           <div class="steps-row">
             <div class="step-card">
               <span class="step-num">01</span>
-              <h4>Record or Upload</h4>
-              <p>Speak live directly in browser or upload your existing audio file (MP3, WebM, WAV, M4A).</p>
+              <h4>Select Role &amp; Question</h4>
+              <p>Pick your target job role or upload any audio file to begin practice.</p>
             </div>
             <div class="step-card">
               <span class="step-num">02</span>
-              <h4>AI Analyzes Audio</h4>
-              <p>Multimodal Gemini models evaluate tone, communication clarity, and candidate responses.</p>
+              <h4>Speak Your Answer</h4>
+              <p>Listen to the question via AI speech, record live, and practice with STAR guidelines.</p>
             </div>
             <div class="step-card">
               <span class="step-num">03</span>
-              <h4>Review &amp; Excel</h4>
-              <p>Get a comprehensive scorecard, personalized growth tips, and full interview transcript.</p>
+              <h4>Get Instant Scorecard</h4>
+              <p>Review 4-metric score breakdown, personalized feedback, and full transcript.</p>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- STEP 1B: AI MOCK INTERVIEW PRACTICE STUDIO -->
+      <div class="screen" id="screen-practice" hidden>
+        <button class="back" data-back="screen-home" type="button">&larr; Back to Home</button>
+        
+        <div class="practice-studio-head">
+          <span class="practice-studio-badge">🎯 Interactive AI Practice Studio</span>
+          <h2 class="practice-studio-title">Master Role-Specific Mock Interviews</h2>
+          <p class="hero-sub">Select your target career path. Practice authentic interview questions with live speech readout, STAR framework tips, and AI scoring.</p>
+        </div>
+
+        <!-- 1. ROLES -->
+        <div class="practice-step-box">
+          <label class="practice-step-title">1. Choose Your Target Job Role</label>
+          <div class="role-grid" id="practice-role-grid">
+            <button type="button" class="role-card active" data-role="Software Engineer / Full Stack" data-icon="💻">
+              <span class="role-icon">💻</span>
+              <span class="role-name">Software Engineer</span>
+              <span class="role-sub">DSA, APIs, System Design &amp; Architecture</span>
+            </button>
+            <button type="button" class="role-card" data-role="Frontend Engineer" data-icon="🎨">
+              <span class="role-icon">🎨</span>
+              <span class="role-name">Frontend Engineer</span>
+              <span class="role-sub">React, JavaScript, Web Performance &amp; State</span>
+            </button>
+            <button type="button" class="role-card" data-role="Data Scientist &amp; ML" data-icon="📊">
+              <span class="role-icon">📊</span>
+              <span class="role-name">Data Scientist &amp; AI</span>
+              <span class="role-sub">Python, Machine Learning, SQL &amp; Stats</span>
+            </button>
+            <button type="button" class="role-card" data-role="Product Manager" data-icon="💼">
+              <span class="role-icon">💼</span>
+              <span class="role-name">Product Manager</span>
+              <span class="role-sub">Product Sense, Metrics, Prioritization &amp; GTM</span>
+            </button>
+            <button type="button" class="role-card" data-role="HR &amp; Behavioral Round" data-icon="👥">
+              <span class="role-icon">👥</span>
+              <span class="role-name">HR &amp; Behavioral</span>
+              <span class="role-sub">STAR Method, Conflict, Leadership &amp; Fit</span>
+            </button>
+            <button type="button" class="role-card" data-role="Backend &amp; Cloud DevOps" data-icon="⚡">
+              <span class="role-icon">⚡</span>
+              <span class="role-name">Backend &amp; DevOps</span>
+              <span class="role-sub">Microservices, Scaling, Databases &amp; Cloud</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. ROUND / CATEGORY -->
+        <div class="practice-step-box">
+          <label class="practice-step-title">2. Select Interview Round Style</label>
+          <div class="track-pills" id="practice-track-pills">
+            <button type="button" class="track-pill active" data-track="Behavioral &amp; Culture (STAR)">🌟 Behavioral &amp; Culture (STAR Method)</button>
+            <button type="button" class="track-pill" data-track="Technical Depth &amp; Concepts">🛠️ Technical Depth &amp; Concepts</button>
+            <button type="button" class="track-pill" data-track="Situational &amp; Problem Solving">🚀 Situational &amp; Real Scenarios</button>
+          </div>
+        </div>
+
+        <!-- 3. QUESTION SELECTION -->
+        <div class="practice-step-box">
+          <div class="practice-q-header">
+            <label class="practice-step-title">3. Pick a Question to Practice</label>
+            <button type="button" id="btn-shuffle-questions" class="btn-text">🔀 Shuffle Questions</button>
+          </div>
+          <div class="question-list" id="practice-questions-list">
+            <!-- Dynamically populated from JS question bank -->
+          </div>
+
+          <div class="custom-q-box">
+            <label for="practice-custom-question">Or enter your own custom interview question:</label>
+            <input type="text" id="practice-custom-question" placeholder="e.g. Tell me about a time you designed a scalable API under tight deadlines...">
+          </div>
+        </div>
+
+        <!-- LAUNCH BUTTON -->
+        <div class="practice-launch-bar">
+          <button id="btn-launch-practice" class="btn primary big">🚀 Launch Practice Studio &amp; Start Answering &rarr;</button>
         </div>
       </div>
 
       <!-- STEP 2: MODE SELECT -->
       <div class="screen" id="screen-mode" hidden>
         <button class="back" data-back="screen-home" type="button">&larr; Back</button>
-        <h2>How do you want to bring in the audio?</h2>
-        <div class="mode-grid">
+        <h2>How would you like to conduct the session?</h2>
+        <div class="mode-grid mode-grid-3">
+          <button class="mode-card featured" id="mode-practice" type="button">
+            <span class="mode-card-badge">Recommended</span>
+            <span class="mode-title">🎯 AI Mock Practice Studio</span>
+            <span class="mode-desc">Pick your job role &amp; practice curated top interview questions with live audio prompter &amp; STAR tips.</span>
+          </button>
           <button class="mode-card" id="mode-live" type="button">
-            <span class="mode-title">Record it now</span>
-            <span class="mode-desc">Start the interview live in this tab. You can pause and resume as you go.</span>
+            <span class="mode-title">🎙️ Freeform / Video Call</span>
+            <span class="mode-desc">Live recording from mic or capture both sides of Google Meet, Zoom, or Microsoft Teams.</span>
           </button>
           <button class="mode-card" id="mode-upload" type="button">
-            <span class="mode-title">Upload a recording</span>
-            <span class="mode-desc">Already have the audio saved? Pick the file and skip straight to analysis.</span>
+            <span class="mode-title">📁 Upload Saved Audio</span>
+            <span class="mode-desc">Have an existing audio file? Pick MP3, WAV, WebM, or M4A to analyze directly.</span>
           </button>
         </div>
       </div>
@@ -140,6 +225,49 @@
         <p class="muted" style="margin:-0.75rem 0 1.5rem 1.75rem;font-size:0.9rem;">
           Works in Chrome or Edge on a computer. After you press Start, pick your call tab and tick "Share tab audio".
         </p>
+
+        <!-- INTERACTIVE AI QUESTION PROMPTER (Shown in Practice Mode) -->
+        <div id="practice-prompter" class="practice-prompter" hidden>
+          <div class="prompter-top">
+            <div class="prompter-tags">
+              <span class="prompter-role-tag" id="prompter-role-tag">💻 Software Engineer</span>
+              <span class="prompter-track-tag" id="prompter-track-tag">🌟 Behavioral</span>
+            </div>
+            <div class="prompter-actions">
+              <button type="button" id="btn-prompter-speak" class="prompter-action-btn" title="Listen question with AI voice">
+                <span>🔊</span> Listen Question
+              </button>
+            </div>
+          </div>
+
+          <div class="prompter-question-card">
+            <span class="prompter-q-count" id="prompter-q-count">Question 1 of 5</span>
+            <p class="prompter-q-text" id="prompter-q-text">
+              Tell me about a challenging bug or technical problem you solved. Walk me through your thought process and resolution.
+            </p>
+          </div>
+
+          <!-- STAR Helper Accordion -->
+          <div class="prompter-star-toggle">
+            <button type="button" id="btn-toggle-star-guide" class="prompter-star-btn">
+              💡 STAR Answering Guide <span id="star-guide-chevron">▾</span>
+            </button>
+            <div id="prompter-star-guide" class="prompter-star-drawer" hidden>
+              <div class="star-pill-grid">
+                <div class="star-pill"><strong>S - Situation:</strong> Set the context, team &amp; challenge.</div>
+                <div class="star-pill"><strong>T - Task:</strong> Clarify your exact responsibility.</div>
+                <div class="star-pill"><strong>A - Action:</strong> Explain specific technical steps YOU took.</div>
+                <div class="star-pill"><strong>R - Result:</strong> Share measurable outcomes, impact &amp; takeaways.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="prompter-nav-bar">
+            <button type="button" id="btn-prompter-prev" class="prompter-nav-btn">&larr; Previous</button>
+            <button type="button" id="btn-prompter-shuffle" class="prompter-nav-btn">🔀 Shuffle</button>
+            <button type="button" id="btn-prompter-next" class="prompter-nav-btn">Next Question &rarr;</button>
+          </div>
+        </div>
 
         <div class="recorder">
           <div class="timer" id="timer">00:00:00</div>
@@ -168,6 +296,15 @@
       <div class="screen" id="screen-review" hidden>
         <h2>Ready to send this in?</h2>
         <div class="review">
+          <!-- PRACTICE SESSION CONTEXT (Review Screen) -->
+          <div id="review-practice-context" class="review-practice-box" hidden>
+            <div class="review-practice-pill-row">
+              <span class="review-practice-badge" id="review-practice-role">💻 Software Engineer</span>
+              <span class="review-practice-sub" id="review-practice-track">🌟 Behavioral</span>
+            </div>
+            <p class="review-practice-q" id="review-practice-question"></p>
+          </div>
+
           <audio id="player" controls></audio>
           <label class="check">
             <input type="checkbox" id="transcript-opt">
@@ -218,6 +355,15 @@
           <div class="score-num"><span id="score-value">–</span><small>/10</small></div>
         </div>
       </header>
+
+      <!-- PRACTICE SESSION DETAILS BANNER -->
+      <div id="r-practice-banner" class="practice-result-banner" hidden>
+        <div class="practice-result-meta-row">
+          <span class="practice-result-tag" id="r-practice-role">💻 Software Engineer</span>
+          <span class="practice-result-label">Target Practice Question</span>
+        </div>
+        <p class="practice-result-question-text" id="r-practice-question"></p>
+      </div>
 
       <!-- ACTION BAR: PDF, COPY & SHARE -->
       <div class="results-actions">
@@ -298,15 +444,25 @@
     </article>
   </main>
 
-  <!-- AUTHENTICATION MODAL (LOGIN & SIGNUP) -->
-  <div id="auth-modal" class="auth-overlay" hidden>
-    <div class="auth-card" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+  <!-- FULL-SCREEN IMMERSIVE AUTHENTICATION & ONBOARDING -->
+  <div id="auth-modal" class="auth-overlay auth-fullscreen" hidden>
+    <div class="auth-fullscreen-container" role="dialog" aria-modal="true" aria-labelledby="auth-title">
       <button id="btn-close-auth" class="auth-close" type="button" aria-label="Close modal">&times;</button>
       
-      <!-- VIEW 1: ANIMATED ROBO WELCOME ONBOARDING -->
-      <div id="auth-panel-welcome" class="auth-panel auth-panel-welcome">
-        <div class="robo-avatar-box">
-          <svg class="robo-svg" viewBox="0 0 160 160" width="130" height="130" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- LEFT HERO SHOWCASE (LARGE ANIMATED ROBOT & VALUE PROPS) -->
+      <div class="auth-hero-showcase">
+        <div class="auth-brand-badge">
+          <img src="logo.svg" alt="IntervAI" class="auth-brand-logo-hero">
+          <span class="auth-brand-name">IntervAI</span>
+          <span class="auth-brand-pill">AI Coach</span>
+        </div>
+
+        <!-- BIG ANIMATED ROBOT MASCOT -->
+        <div class="robo-avatar-box robo-avatar-box-hero">
+          <div class="robo-speech-bubble" id="robo-speech-bubble">
+            <span>👋 "Hello! I'm your AI Interview Mentor. Ready to practice and land your dream job?"</span>
+          </div>
+          <svg class="robo-svg robo-svg-hero" viewBox="0 0 160 160" width="160" height="160" fill="none" xmlns="http://www.w3.org/2000/svg">
             <!-- Antenna -->
             <path d="M80 34V18" stroke="#8C7A66" stroke-width="4" stroke-linecap="round"/>
             <circle cx="80" cy="14" r="6" fill="#C2492E" class="antenna-ball"/>
@@ -352,70 +508,117 @@
               <path d="M145 92 Q149 90 147 86" stroke="#C98A2E" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.8"/>
             </g>
           </svg>
-          <div class="robo-shadow"></div>
+          <div class="robo-shadow robo-shadow-hero"></div>
         </div>
 
-        <div class="robo-badge">
-          <span>✨</span> Meet Your AI Interview Mentor
+        <!-- SHOWCASE VALUE PILLARS -->
+        <div class="auth-showcase-features">
+          <div class="auth-feat-item">
+            <span class="auth-feat-icon">🎯</span>
+            <div>
+              <strong>Targeted Mock Practice</strong>
+              <p>Practice curated questions for Software Eng, Frontend, Data Science, PM &amp; HR.</p>
+            </div>
+          </div>
+          <div class="auth-feat-item">
+            <span class="auth-feat-icon">🎙️</span>
+            <div>
+              <strong>Multimodal Voice Evaluation</strong>
+              <p>Analyzes speaking pace, answer depth, confidence levels &amp; vocal clarity.</p>
+            </div>
+          </div>
+          <div class="auth-feat-item">
+            <span class="auth-feat-icon">📊</span>
+            <div>
+              <strong>4-Metric Rubric Breakdown</strong>
+              <p>Instant grading on Communication, Technical, Confidence &amp; STAR Structure.</p>
+            </div>
+          </div>
         </div>
 
-        <h2 class="robo-welcome-title">Hello! 👋 Welcome to IntervAI</h2>
-        <p class="robo-welcome-desc">
-          Your intelligent AI interview coach. Practice real mock interviews, get instant rubric scoring, and level up your career.
-        </p>
-
-        <div class="robo-highlights">
-          <span class="robo-tag">🎙️ Real-Time Audio AI</span>
-          <span class="robo-tag">📊 4-Metric Scorecard</span>
-          <span class="robo-tag">📄 PDF Reports</span>
+        <div class="auth-showcase-proof">
+          <div class="proof-stars">⭐️⭐️⭐️⭐️⭐️</div>
+          <p>Join candidates preparing for top tech &amp; corporate interviews.</p>
         </div>
-
-        <button id="btn-auth-explore" class="btn primary big btn-explore" type="button">
-          🚀 Explore IntervAI &rarr;
-        </button>
-
-        <p class="robo-explore-note">Click Explore to sign in or create your account</p>
       </div>
 
-      <!-- VIEW 2: LOGIN & SIGNUP FORM -->
-      <div id="auth-panel-form" class="auth-panel auth-panel-form" hidden>
-        <button id="btn-back-to-robo" class="auth-back-btn" type="button">&larr; Back to Welcome</button>
+      <!-- RIGHT INTERACTIVE PANE (WELCOME OR FORM) -->
+      <div class="auth-interactive-pane">
+        <!-- VIEW 1: WELCOME & EXPLORE -->
+        <div id="auth-panel-welcome" class="auth-panel auth-panel-welcome">
+          <div class="mobile-robo-box">
+            <div class="robo-badge">
+              <span>✨</span> Meet Your AI Interview Mentor
+            </div>
+          </div>
 
-        <div class="auth-head">
-          <img src="logo.svg" alt="" class="auth-brand-logo">
-          <h2 id="auth-title">Sign In to IntervAI</h2>
-          <p id="auth-desc" class="muted">Access your personalized interview evaluations and records.</p>
+          <h2 class="robo-welcome-title">Hello! 👋 Welcome to IntervAI</h2>
+          <p class="robo-welcome-desc">
+            Your personal AI interview coach. Practice real mock questions, receive instant rubric scores, and master your interview delivery.
+          </p>
+
+          <div class="robo-highlights">
+            <span class="robo-tag">🎯 Role-Based Mock Practice</span>
+            <span class="robo-tag">🎙️ Real-Time Voice AI</span>
+            <span class="robo-tag">📊 4-Metric Scorecard</span>
+            <span class="robo-tag">📄 PDF Reports</span>
+          </div>
+
+          <div class="robo-role-tags">
+            <span class="role-chip">💻 Full Stack</span>
+            <span class="role-chip">🎨 Frontend</span>
+            <span class="role-chip">📊 Data Science</span>
+            <span class="role-chip">💼 Product Mgr</span>
+            <span class="role-chip">👥 HR &amp; STAR</span>
+          </div>
+
+          <button id="btn-auth-explore" class="btn primary big btn-explore" type="button">
+            🚀 Explore IntervAI &amp; Get Started &rarr;
+          </button>
+
+          <p class="robo-explore-note">Click Explore to sign in or create your account</p>
         </div>
 
-        <div class="auth-tabs" role="tablist">
-          <button id="tab-auth-login" class="auth-tab-btn active" type="button" role="tab" aria-selected="true">Sign In</button>
-          <button id="tab-auth-signup" class="auth-tab-btn" type="button" role="tab" aria-selected="false">Create Account</button>
-        </div>
+        <!-- VIEW 2: LOGIN & SIGNUP FORM -->
+        <div id="auth-panel-form" class="auth-panel auth-panel-form" hidden>
+          <button id="btn-back-to-robo" class="auth-back-btn" type="button">&larr; Back to Welcome</button>
 
-        <p id="auth-error" class="auth-error" role="alert" hidden></p>
-        <p id="auth-success" class="auth-success" role="status" hidden></p>
-
-        <form id="auth-form" class="auth-form">
-          <div id="auth-field-name" class="auth-field" hidden>
-            <label for="auth-input-name">Full Name</label>
-            <input type="text" id="auth-input-name" placeholder="e.g. Alex Morgan" autocomplete="name">
+          <div class="auth-head">
+            <img src="logo.svg" alt="" class="auth-brand-logo">
+            <h2 id="auth-title">Sign In to IntervAI</h2>
+            <p id="auth-desc" class="muted">Access your personalized interview evaluations and records.</p>
           </div>
 
-          <div class="auth-field">
-            <label for="auth-input-email">Email Address</label>
-            <input type="email" id="auth-input-email" placeholder="name@example.com" required autocomplete="email">
+          <div class="auth-tabs" role="tablist">
+            <button id="tab-auth-login" class="auth-tab-btn active" type="button" role="tab" aria-selected="true">Sign In</button>
+            <button id="tab-auth-signup" class="auth-tab-btn" type="button" role="tab" aria-selected="false">Create Account</button>
           </div>
 
-          <div class="auth-field">
-            <label for="auth-input-password">Password</label>
-            <input type="password" id="auth-input-password" placeholder="At least 6 characters" required autocomplete="current-password">
+          <p id="auth-error" class="auth-error" role="alert" hidden></p>
+          <p id="auth-success" class="auth-success" role="status" hidden></p>
+
+          <form id="auth-form" class="auth-form">
+            <div id="auth-field-name" class="auth-field" hidden>
+              <label for="auth-input-name">Full Name</label>
+              <input type="text" id="auth-input-name" placeholder="e.g. Alex Morgan" autocomplete="name">
+            </div>
+
+            <div class="auth-field">
+              <label for="auth-input-email">Email Address</label>
+              <input type="email" id="auth-input-email" placeholder="name@example.com" required autocomplete="email">
+            </div>
+
+            <div class="auth-field">
+              <label for="auth-input-password">Password</label>
+              <input type="password" id="auth-input-password" placeholder="At least 6 characters" required autocomplete="current-password">
+            </div>
+
+            <button type="submit" id="btn-auth-submit" class="btn primary big auth-submit">Sign In</button>
+          </form>
+
+          <div class="auth-footer">
+            <p class="muted" id="auth-footer-prompt">Don't have an account? <button type="button" id="btn-switch-signup" class="auth-switch-link">Sign up</button></p>
           </div>
-
-          <button type="submit" id="btn-auth-submit" class="btn primary big auth-submit">Sign In</button>
-        </form>
-
-        <div class="auth-footer">
-          <p class="muted" id="auth-footer-prompt">Don't have an account? <button type="button" id="btn-switch-signup" class="auth-switch-link">Sign up</button></p>
         </div>
       </div>
     </div>
