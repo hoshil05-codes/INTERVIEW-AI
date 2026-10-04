@@ -1277,8 +1277,8 @@ app.get("/api/interviews", requireAuth, async (req, res) => {
   }
 });
 
-// Get single interview by ID (Requires Login)
-app.get("/api/interviews/:id", requireAuth, async (req, res) => {
+// Get single interview by ID (Public so shared reports can be viewed with report link)
+app.get("/api/interviews/:id", async (req, res) => {
   try {
     const item = await getInterviewById(req.params.id);
     if (!item) {

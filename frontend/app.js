@@ -868,7 +868,33 @@ for (const btn of document.querySelectorAll(".back")) {
 if ($("btn-results-new")) {
   $("btn-results-new").addEventListener("click", () => {
     stopCurrentSpeech();
-    showView("new");
+    isViewingSharedReport = false;
+    const sharedBanner = $("r-shared-banner");
+    if (sharedBanner) sharedBanner.hidden = true;
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+    if (!currentUser) {
+      openAuthModal("login");
+    } else {
+      showView("new");
+    }
+  });
+}
+
+if ($("btn-shared-try-now")) {
+  $("btn-shared-try-now").addEventListener("click", () => {
+    isViewingSharedReport = false;
+    const sharedBanner = $("r-shared-banner");
+    if (sharedBanner) sharedBanner.hidden = true;
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+    if (!currentUser) {
+      openAuthModal("signup", true);
+    } else {
+      showView("new");
+    }
   });
 }
 
@@ -2203,13 +2229,15 @@ let activeResultData = null;
 function renderResult(data) {
   activeResultData = data;
 
-  // Hide all screens
+  // Hide all screens and main views
   for (const s of STEPS) {
     const element = $(s);
     if (element) {
       element.hidden = true;
     }
   }
+  if ($("view-new")) $("view-new").hidden = true;
+  if ($("view-past")) $("view-past").hidden = true;
 
   if ($("r-title")) {
     $("r-title").textContent =
@@ -2398,6 +2426,16 @@ function renderResult(data) {
       behavior: "smooth",
       block: "start"
     });
+  }
+
+  // Update browser URL query parameter with permalink to this specific report
+  const reportId = data.interview_id || data.id;
+  if (reportId && window.history && window.history.replaceState) {
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.set("report", reportId);
+      window.history.replaceState({ reportId }, "", u.toString());
+    } catch (_) {}
   }
 }
 
@@ -2616,21 +2654,64 @@ ${sug || "• Practice structured storytelling"}
 }
 
 function shareReport() {
-  const title = activeResultData ? activeResultData.title : "Interview Scorecard";
-  const scoreText = activeResultData && activeResultData.score != null ? ` (Score: ${activeResultData.score}/10)` : "";
+  if (!activeResultData) {
+    showToast("No active report to share.");
+    return;
+  }
+
+  const title = activeResultData.title || "Interview Performance Evaluation";
+  const scoreText = activeResultData.score != null ? ` (Score: ${activeResultData.score}/10)` : "";
+  const reportId = activeResultData.interview_id || activeResultData.id;
+
+  const url = new URL(window.location.origin + window.location.pathname);
+  if (reportId) {
+    url.searchParams.set("report", reportId);
+  }
+  const shareUrl = url.toString();
+
   const shareData = {
     title: `IntervAI - ${title}`,
-    text: `Check out my interview performance evaluation report on IntervAI!${scoreText}`,
-    url: window.location.href
+    text: `Check out my interview performance evaluation report on IntervAI!${scoreText}\n${shareUrl}`,
+    url: shareUrl
   };
 
   if (navigator.share) {
-    navigator.share(shareData).catch(() => {});
-  } else {
-    navigator.clipboard.writeText(window.location.href).then(() => {
-      showToast("🔗 Link copied to clipboard!");
+    navigator.share(shareData).catch((err) => {
+      if (err && err.name !== "AbortError") {
+        copyShareUrl(shareUrl);
+      }
     });
+  } else {
+    copyShareUrl(shareUrl);
   }
+}
+
+function copyShareUrl(url) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => {
+      showToast("🔗 Report link copied to clipboard!");
+    }).catch(() => {
+      fallbackCopy(url);
+    });
+  } else {
+    fallbackCopy(url);
+  }
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand("copy");
+    showToast("🔗 Report link copied to clipboard!");
+  } catch (_) {
+    prompt("Copy this report link:", text);
+  }
+  document.body.removeChild(ta);
 }
 
 if ($("btn-download-pdf")) {
@@ -2940,6 +3021,8 @@ function getAuthHeaders() {
   return headers;
 }
 
+let isViewingSharedReport = false;
+
 function updateAuthUI() {
   const guestBox = $("auth-nav-guest");
   const userBox = $("auth-nav-user");
@@ -2964,12 +3047,22 @@ function updateAuthUI() {
       }
     }
   } else {
-    // Unauthenticated: Lock the entire app behind Login!
-    document.body.classList.add("auth-locked");
-    if (modal) {
-      modal.classList.add("mandatory");
-      modal.hidden = false;
-      showAuthPanel("welcome", false);
+    // Unauthenticated
+    if (isViewingSharedReport) {
+      // Do NOT lock app or show modal if visitor is viewing a shared report
+      document.body.classList.remove("auth-locked");
+      if (modal) {
+        modal.classList.remove("mandatory");
+        modal.hidden = true;
+      }
+    } else {
+      // Lock the entire app behind Login for standard interactive use
+      document.body.classList.add("auth-locked");
+      if (modal) {
+        modal.classList.add("mandatory");
+        modal.hidden = false;
+        showAuthPanel("welcome", false);
+      }
     }
     const badge = $("welcome-badge-text");
     if (badge) {
@@ -3267,14 +3360,68 @@ if (authForm) {
   });
 }
 
+// ============================================================
+// STEP 24: SHARED REPORT DEEP-LINK LOADER
+// ============================================================
+
+async function checkAndLoadSharedReport() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const reportId = urlParams.get("report") || urlParams.get("id");
+  if (!reportId) return false;
+
+  isViewingSharedReport = true;
+  document.body.classList.remove("auth-locked");
+  const modal = $("auth-modal");
+  if (modal) {
+    modal.classList.remove("mandatory");
+    modal.hidden = true;
+  }
+
+  showToast("Loading shared interview report...");
+
+  try {
+    const res = await fetch(`/api/interviews/${encodeURIComponent(reportId)}`, {
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) {
+      throw new Error("Shared report not found or may have been deleted.");
+    }
+    const item = await res.json();
+
+    const sharedBanner = $("r-shared-banner");
+    if (sharedBanner) {
+      sharedBanner.hidden = false;
+    }
+
+    renderResult({
+      ...item,
+      title: item.title || "Interview",
+      createdAt: item.createdAt || item.date || new Date().toISOString()
+    });
+
+    return true;
+  } catch (err) {
+    console.warn("Could not load shared report:", err);
+    isViewingSharedReport = false;
+    showError(err.message || "Could not open shared report.");
+    return false;
+  }
+}
+
 // Initial session check and UI update
+const initialParams = new URLSearchParams(window.location.search);
+if (initialParams.get("report") || initialParams.get("id")) {
+  isViewingSharedReport = true;
+}
+
 updateAuthUI();
 verifyAuthSession();
+checkAndLoadSharedReport();
 
 // ============================================================
 // APP START
 // ============================================================
 
 console.log(
-  "Interview AI frontend with authentication loaded successfully."
+  "Interview AI frontend with authentication and shared report support loaded successfully."
 );

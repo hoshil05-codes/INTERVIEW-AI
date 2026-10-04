@@ -46,7 +46,7 @@
 
         <div class="hero-actions">
           <button id="btn-goto-practice" class="btn primary big">🎯 Start AI Mock Practice</button>
-          <button id="btn-goto-mode" class="btn big secondary">🎙️ Freeform / Video Call</button>
+          <button id="btn-goto-mode" class="btn big secondary">🎙️ Choose Interview Mode</button>
           <button id="btn-hero-past" class="btn big secondary" type="button">📋 Past Interviews</button>
         </div>
 
@@ -435,6 +435,14 @@
           <div class="score-num"><span id="score-value">–</span><small>/10</small></div>
         </div>
       </header>
+
+      <!-- SHARED REPORT PUBLIC BANNER (Visible when opened via share link) -->
+      <div id="r-shared-banner" class="shared-report-banner" hidden>
+        <div class="shared-banner-content">
+          <span>🔗 <strong>Shared Interview Report:</strong> This evaluation was shared via IntervAI AI Coach.</span>
+          <button type="button" id="btn-shared-try-now" class="btn primary small">🚀 Try IntervAI Yourself</button>
+        </div>
+      </div>
 
       <!-- PRACTICE SESSION DETAILS BANNER -->
       <div id="r-practice-banner" class="practice-result-banner" hidden>
