@@ -94,15 +94,18 @@ function pickMimeType() {
 }
 
 function extensionFor(mime) {
-  mime = mime || "";
+  mime = (mime || "").toLowerCase();
 
   if (mime.includes("webm")) return "webm";
   if (mime.includes("mp4") || mime.includes("m4a")) return "m4a";
   if (mime.includes("ogg")) return "ogg";
   if (mime.includes("wav")) return "wav";
-  if (mime.includes("mpeg") || mime.includes("mp3")) return "mp3";
+  if (mime.includes("mpeg") || mime.includes("mpga")) return "mpeg";
+  if (mime.includes("mp3")) return "mp3";
+  if (mime.includes("flac")) return "flac";
+  if (mime.includes("aac")) return "aac";
 
-  return "audio";
+  return "webm";
 }
 
 
@@ -1702,10 +1705,14 @@ const MAX_UPLOAD_MB = 500;
 
 const ALLOWED_EXTENSIONS = [
   "mp3",
+  "mpeg",
+  "mpga",
   "wav",
   "m4a",
   "ogg",
-  "webm"
+  "webm",
+  "aac",
+  "flac"
 ];
 
 function checkAudio(blob) {
@@ -1728,15 +1735,13 @@ function checkAudio(blob) {
         .toLowerCase();
 
     const isAudio =
-      (blob.type || "").startsWith(
-        "audio/"
-      ) ||
-      ALLOWED_EXTENSIONS.includes(
-        ext
-      );
+      (blob.type || "").startsWith("audio/") ||
+      (blob.type || "").includes("mpeg") ||
+      (blob.type || "").includes("webm") ||
+      ALLOWED_EXTENSIONS.includes(ext);
 
     if (!isAudio) {
-      return "This file is not a supported audio file. Use mp3, wav, m4a, ogg or webm.";
+      return "This file is not a supported audio file. Use mp3, mpeg, wav, m4a, ogg or webm.";
     }
   }
 
@@ -1894,14 +1899,15 @@ async function analyze() {
 
   const form = new FormData();
 
+  const origName = (rec.blob && rec.blob.name) || "";
+  const origExt = origName.includes(".") ? origName.split(".").pop().toLowerCase() : "";
+  const resolvedExt = origExt || extensionFor(rec.blob ? rec.blob.type || "" : "");
+  const uploadFileName = origName || `interview.${resolvedExt}`;
+
   form.append(
     "audio",
     rec.blob,
-    `interview.${extensionFor(
-      rec.blob.type ||
-      rec.blob.name ||
-      ""
-    )}`
+    uploadFileName
   );
 
   if ($("transcript-opt")) {

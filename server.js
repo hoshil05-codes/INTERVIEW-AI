@@ -57,8 +57,10 @@ function getAudioMimeType(filePath) {
     case ".webm":
       return "audio/webm";
     case ".mp3":
-    case ".mpeg":
       return "audio/mp3";
+    case ".mpeg":
+    case ".mpga":
+      return "audio/mpeg";
     case ".wav":
       return "audio/wav";
     case ".ogg":
@@ -71,7 +73,7 @@ function getAudioMimeType(filePath) {
     case ".flac":
       return "audio/flac";
     default:
-      return "audio/webm";
+      return "audio/mpeg";
   }
 }
 
@@ -631,8 +633,8 @@ const app = express();
 const PORT = Number(process.env.PORT) || 5000;
 
 app.use(cors());
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+app.use(express.json({ limit: "500mb" }));
+app.use(express.urlencoded({ extended: true, limit: "500mb" }));
 
 // Optional JWT User Extractor Middleware
 app.use((req, res, next) => {
@@ -683,18 +685,33 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowedExts = [".mp3", ".wav", ".m4a", ".ogg", ".webm", ".aac", ".flac"];
+  const allowedExts = [
+    ".mp3",
+    ".mpeg",
+    ".mpga",
+    ".wav",
+    ".m4a",
+    ".ogg",
+    ".webm",
+    ".aac",
+    ".flac",
+    ".mp4"
+  ];
   const ext = path.extname(file.originalname || "").toLowerCase();
 
   if (
-    file.mimetype.startsWith("audio/") ||
-    file.mimetype === "video/webm" ||
-    file.mimetype === "application/octet-stream" ||
+    (file.mimetype && (
+      file.mimetype.startsWith("audio/") ||
+      file.mimetype.includes("mpeg") ||
+      file.mimetype.includes("webm") ||
+      file.mimetype.includes("mp4") ||
+      file.mimetype === "application/octet-stream"
+    )) ||
     allowedExts.includes(ext)
   ) {
     cb(null, true);
   } else {
-    cb(new Error("Only audio files are allowed (.mp3, .wav, .m4a, .ogg, .webm)"), false);
+    cb(new Error("Only audio files are allowed (.mp3, .mpeg, .wav, .m4a, .ogg, .webm, .flac, .aac)"), false);
   }
 };
 
@@ -702,7 +719,7 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 50 * 1024 * 1024 // 50MB
+    fileSize: 500 * 1024 * 1024 // 500MB (supports 1+ hour long recordings)
   }
 });
 
@@ -903,6 +920,7 @@ app.post("/api/interview/analyze", requireAuth, async (req, res) => {
     const stats = fs.statSync(audioPath);
     const audioMime = getAudioMimeType(audioPath);
     let audioPart = null;
+    let uploadedFile = null;
 
     // Use fast, resilient inlineData for files under 20MB (prevents Google Files API WebM transcode failures)
     if (stats.size < 20 * 1024 * 1024) {
@@ -916,16 +934,16 @@ app.post("/api/interview/analyze", requireAuth, async (req, res) => {
       };
     } else {
       console.log(`Large audio file (${(stats.size / 1024 / 1024).toFixed(1)} MB), uploading to Gemini Files API...`);
-      let uploadedFile = await ai.files.upload({
+      uploadedFile = await ai.files.upload({
         file: audioPath,
-        mimeType: audioMime
+        config: { mimeType: audioMime }
       });
 
       console.log("Audio uploaded to Gemini Files API:", uploadedFile.name);
 
       let attempts = 0;
-      while (uploadedFile.state === "PROCESSING" && attempts < 45) {
-        console.log("File is processing on Gemini, waiting 1s...");
+      while (uploadedFile.state === "PROCESSING" && attempts < 120) {
+        console.log(`File is processing on Gemini (${attempts + 1}/120s), waiting 1s...`);
         await new Promise((r) => setTimeout(r, 1000));
         uploadedFile = await ai.files.get({ name: uploadedFile.name });
         attempts++;
@@ -1308,6 +1326,12 @@ app.use((req, res, next) => {
 app.use((err, req, res, next) => {
   console.error("Server uncaught error:", err);
   if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({
+        success: false,
+        message: "Audio file size exceeds limit (Max 500MB). Please choose a smaller recording or compress it."
+      });
+    }
     return res.status(400).json({
       success: false,
       message: `Upload error: ${err.message}`
